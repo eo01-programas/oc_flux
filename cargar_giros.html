@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cargar Girados</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            background-color: #f4f6f8;
+            padding: 40px;
+            display: flex;
+            justify-content: center;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 600px;
+            text-align: center;
+        }
+        h1 { margin-bottom: 20px; color: #1a1a1a; font-size: 24px; }
+        
+        .upload-area {
+            border: 2px dashed #cbd5e0;
+            padding: 30px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            background-color: #fafbfc;
+        }
+        
+        input[type="file"] { margin-bottom: 20px; }
+        
+        button {
+            background-color: #4A90E2;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        button:hover { background-color: #357ABD; }
+        button:disabled { background-color: #ccc; cursor: not-allowed; }
+
+        #status { margin-top: 20px; padding: 10px; border-radius: 6px; font-weight: 500; display: none; }
+        .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .loading { background-color: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Cargar girados al programa</h1>
+    <p>Selecciona el archivo excel a cargar</p>
+    
+    <div class="upload-area">
+        <input type="file" id="fileInput" accept=".xls,.xlsx,.csv" />
+        <br>
+        <button id="btnProcesar" onclick="procesarExcel()">Cargar Datos</button>
+    </div>
+
+    <div id="status"></div>
+</div>
+
+<script>
+    // URL DE TU SCRIPT DE GOOGLE
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzyQOsHpL6PfL25gooNbt6WzjKpK2QQQ-wpvOOry2FsK7eZobObLSrudjJ20o-G5wHFmA/exec"; 
+
+    function mostrarStatus(mensaje, tipo) {
+        const div = document.getElementById('status');
+        div.style.display = 'block';
+        div.className = tipo;
+        div.innerText = mensaje;
+    }
+
+    function procesarExcel() {
+        const fileInput = document.getElementById('fileInput');
+        const file = fileInput.files[0];
+
+        if (!file) {
+            mostrarStatus("Por favor selecciona un archivo primero.", "error");
+            return;
+        }
+
+        mostrarStatus("Procesando archivo...", "loading");
+        document.getElementById('btnProcesar').disabled = true;
+
+        const reader = new FileReader();
+
+        reader.onload = function(e) {
+            try {
+                const data = e.target.result;
+                const workbook = XLSX.read(data, {type: 'binary'});
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                const rawData = XLSX.utils.sheet_to_json(worksheet, {header: 1});
+
+                const datosLimpios = limpiarDatos(rawData);
+                
+                if (datosLimpios.length === 0) {
+                    throw new Error("No se encontraron datos válidos para cargar.");
+                }
+
+                enviarAGoogleSheets(datosLimpios);
+
+            } catch (error) {
+                mostrarStatus("Error: " + error.message, "error");
+                document.getElementById('btnProcesar').disabled = false;
+            }
+        };
+
+        reader.onerror = function() {
+            mostrarStatus("Error al leer el archivo.", "error");
+            document.getElementById('btnProcesar').disabled = false;
+        };
+
+        reader.readAsBinaryString(file);
+    }
+
+    function limpiarDatos(rawData) {
+        let headerRowIndex = -1;
+        
+        // 1. Buscar fila de encabezado
+        for (let i = 0; i < rawData.length; i++) {
+            if (rawData[i] && rawData[i].toString().includes("F. DESPACHO")) {
+                headerRowIndex = i; break;
+            }
+        }
+        if (headerRowIndex === -1) throw new Error("No se encontró la fila de encabezado 'F. DESPACHO'.");
+
+        const headers = rawData[headerRowIndex];
+        const colMap = {};
+        
+        // Mapeamos los nombres de columna
+        headers.forEach((h, i) => { if(h) colMap[h.toString().trim()] = i; });
+
+        // Orden de columnas deseado
+        const columnasDeseadas = [
+            "F. DESPACHO", "F. GIRADO", "RSV", "CLIENTE", "OP", "CORTE", "COLOR", 
+            "PDS GIRADAS", "OP TELA", "PARTIDA", "KG GIRADOS", "RIB", "ARTÍCULO", 
+            "ESTILO", "NRO. MOLDE", "PRENDA", "TIPO CERTIFICADO", "RUTA TELA"
+        ];
+
+        // Columnas que son FECHAS
+        const columnasFecha = ["F. DESPACHO", "F. GIRADO"];
+        
+        // Columnas a regularizar (Quitar ceros y espacios)
+        const colsRegularizar = ["OP TELA", "PARTIDA"];
+
+        const datosFinales = [];
+
+        for (let i = headerRowIndex + 1; i < rawData.length; i++) {
+            const filaOriginal = rawData[i];
+            
+            // Si no hay fila o no tiene OP, saltamos
+            if (!filaOriginal || !filaOriginal[colMap["OP"]]) continue; 
+
+            const filaLimpia = [];
+
+            columnasDeseadas.forEach(colNombre => {
+                const indexOrigen = colMap[colNombre];
+                let valor = (indexOrigen !== undefined) ? filaOriginal[indexOrigen] : "";
+
+                // --- CONVERSIÓN DE FECHAS ---
+                if (columnasFecha.includes(colNombre) && typeof valor === 'number') {
+                    valor = excelFechaATexto(valor); 
+                }
+                
+                // --- REGULARIZACIÓN (Trim + Quitar Ceros a la izquierda) ---
+                if (colsRegularizar.includes(colNombre) && valor) {
+                    // Convertimos a string, quitamos espacios laterales y luego ceros al inicio
+                    valor = valor.toString().trim().replace(/^0+/, '');
+                }
+
+                filaLimpia.push(valor || "");
+            });
+
+            // Rellenar 18 columnas vacías extra
+            for(let j=0; j<18; j++) filaLimpia.push("");
+            
+            datosFinales.push(filaLimpia);
+        }
+        return datosFinales;
+    }
+
+    function excelFechaATexto(serial) {
+        // Conversión de número serial de Excel a Fecha dd/mmm/yyyy
+        const utc_days = Math.floor(serial - 25569);
+        const utc_value = utc_days * 86400; 
+        const dateInfo = new Date(utc_value * 1000);
+
+        const meses = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+        
+        const dia = dateInfo.getUTCDate().toString().padStart(2, '0');
+        const mes = meses[dateInfo.getUTCMonth()];
+        const anio = dateInfo.getUTCFullYear();
+
+        return `${dia}/${mes}/${anio}`;
+    }
+
+    function enviarAGoogleSheets(datos) {
+        mostrarStatus("Enviando " + datos.length + " filas...", "loading");
+
+        fetch(WEB_APP_URL, {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(datos)
+        })
+        .then(() => {
+            mostrarStatus("¡Éxito! Datos cargados correctamente.", "success");
+            document.getElementById('btnProcesar').disabled = false;
+            document.getElementById('fileInput').value = ""; // Limpiar input
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            mostrarStatus("Error de conexión.", "error");
+            document.getElementById('btnProcesar').disabled = false;
+        });
+    }
+</script>
+
+</body>
+</html>
