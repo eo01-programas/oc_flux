@@ -15,6 +15,7 @@
             justify-content: center;
         }
         .container {
+            position: relative;
             background: white;
             padding: 30px;
             border-radius: 12px;
@@ -32,6 +33,23 @@
             margin-bottom: 20px;
             background-color: #fafbfc;
         }
+
+        /* Botón volver azul en esquina superior derecha */
+        #btnVolver {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            background-color: #4A90E2;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            z-index: 5;
+        }
+        #btnVolver:hover { background-color: #357ABD; }
         
         input[type="file"] { margin-bottom: 20px; }
         
@@ -58,6 +76,7 @@
 <body>
 
 <div class="container">
+    <button id="btnVolver" onclick="window.location.href='index.html'">Volver</button>
     <h1>Cargar girados al programa</h1>
     <p>Selecciona el archivo excel a cargar</p>
     
