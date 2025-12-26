@@ -20,14 +20,7 @@
             --gray-50: #f8fafc;
             --gray-100: #f1f5f9;
             --gray-200: #e2e8f0;
-                        // Ocultar columna ESTADO_CORTE_BLOQUES en vista Habilitado
-                        if (txt === 'ESTADO_CORTE_BLOQUES' || txt === 'ESTADO CORTE BLOQUES' || txt === 'ESTADO_BLOQS') th.style.display = 'none';
-                        // Ocultar columnas solicitadas: COLL O TAP? y varios estados
-                        if (txt === 'COLL O TAP?' || txt === 'COLL O TAP' || txt === 'ESTADO_COLL_TAP' || (txt.indexOf('COLL') !== -1 && txt.indexOf('TAP') !== -1)) th.style.display = 'none';
-                        if (txt === 'ESTADO_TRANSFER' || txt === 'ESTADO TRANSFER' || txt === 'ESTADO_TRANSFER') th.style.display = 'none';
-                        if (txt === 'ESTADO_BORDADO' || txt === 'ESTADO BORDADO' || txt === 'ESTADO_BORD') th.style.display = 'none';
-                        if (txt === 'ESTADO_ESTAMPADO' || txt === 'ESTADO ESTAMPADO' || txt === 'ESTADO_EST') th.style.display = 'none';
-                        if (txt === 'ESTADO_HABILITADO' || txt === 'ESTADO HABILITADO' || txt === 'ESTADO_HABI') th.style.display = 'none';
+            --white: #ffffff;
             --gray-300: #cbd5e1;
             --gray-500: #64748b;
             --gray-800: #1e293b;
@@ -626,6 +619,9 @@
             <button class="nav-tab" onclick="switchView('transfer', this)">
                 <i class="ph ph-stamp"></i> Transfer <span class="badge" id="count-transfer">0</span>
             </button>
+            <button class="nav-tab" onclick="switchView('artes', this)">
+                <i class="ph ph-feather"></i> Artes (Pza) <span class="badge" id="count-artes">0</span>
+            </button>
             <button class="nav-tab" onclick="switchView('habilitado', this)">
                 <i class="ph ph-check-square"></i> Habilitado <span class="badge" id="count-habilitado">0</span>
             </button>
@@ -778,6 +774,98 @@
                 </table>
             </div>
         </section>
+        
+        <!-- VISTA ARTES (Pza) -->
+        <section id="view-artes" class="view-section">
+            <div class="sub-nav">
+                <button id="btn-artes-bordado" class="sub-tab active" onclick="filterArtes('BORDADO', this)">
+                    Bordado <span class="kg-badge" id="artes-pds-bordado">[-]</span>
+                </button>
+                <button id="btn-artes-estampado" class="sub-tab" onclick="filterArtes('ESTAMPADO', this)">
+                    Estampado <span class="kg-badge" id="artes-pds-estampado">[-]</span>
+                </button>
+                <button id="btn-artes-asignar" class="sub-tab" onclick="filterArtes('ASIGNAR', this)">
+                    Asginar Artes
+                </button>
+            </div>
+
+            <!-- Filtros para Asignar Artes -->
+            <div id="artes-asignar-filters" style="display:none; margin-bottom:15px; gap:10px; align-items:center;">
+                <label style="font-weight:600; font-size:12px; color:var(--gray-600);">Filtrar por:</label>
+                <select id="filter-artes-haydato" style="padding:6px 10px; border-radius:4px; border:1px solid var(--gray-300); font-size:12px;" onchange="renderArtesAsignar()">
+                    <option value="">Todos</option>
+                    <option value="CON">Con dato</option>
+                    <option value="SIN">Sin dato</option>
+                </select>
+                <select id="filter-artes-cliente" style="padding:6px 10px; border-radius:4px; border:1px solid var(--gray-300); font-size:12px;" onchange="renderArtesAsignar()">
+                    <option value="">Todos los clientes</option>
+                </select>
+                <select id="filter-artes-estilo" style="padding:6px 10px; border-radius:4px; border:1px solid var(--gray-300); font-size:12px;" onchange="renderArtesAsignar()">
+                    <option value="">Todos los estilos</option>
+                </select>
+                <button onclick="guardarCambiosAsignarArtes()" style="padding:6px 16px; background:var(--primary); color:white; border:none; border-radius:4px; font-weight:600; cursor:pointer; font-size:12px;">Guardar</button>
+                <label class="filter-item" style="margin-left:8px; font-weight:600; font-size:12px; display:inline-flex; align-items:center; gap:6px;">
+                    <input type="checkbox" id="chk-artes-para-todo" style="width:18px;height:18px;vertical-align:middle;"> Para todo
+                </label>
+            </div>
+
+            <!-- Tabla Bordado -->
+            <div id="table-container-artes-bordado" class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 75px;">F. DESPACHO</th>
+                            <th style="width: 75px;">F.ING.COST</th>
+                            <th style="width: 40px;">CLIENTE</th>
+                            <th style="width: 45px;">OC</th>
+                            <th style="width: 80px;">COLOR</th>
+                            <th style="width: 45px; text-align:center;">PDS</th>
+                            <th style="width: 60px;">PRENDA</th>
+                            <th style="width: 70px;">TIPO CERT.</th>
+                            <th style="width: 80px;">n.BDxpda</th>
+                            <th style="width: 100px;">estado_bordado</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbody-artes-bordado"></tbody>
+                </table>
+            </div>
+
+            <!-- Tabla Estampado -->
+            <div id="table-container-artes-estampado" class="table-container" style="display:none;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 75px;">F. DESPACHO</th>
+                            <th style="width: 75px;">F.ING.COST</th>
+                            <th style="width: 40px;">CLIENTE</th>
+                            <th style="width: 45px;">OC</th>
+                            <th style="width: 80px;">COLOR</th>
+                            <th style="width: 45px; text-align:center;">PDS</th>
+                            <th style="width: 60px;">PRENDA</th>
+                            <th style="width: 70px;">TIPO CERT.</th>
+                            <th style="width: 80px;">n.ESTAMPxpda</th>
+                            <th style="width: 100px;">estado_estampado</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbody-artes-estampado"></tbody>
+                </table>
+            </div>
+
+            <!-- Tabla para Asignar Artes -->
+            <div id="table-container-artes-asignar" class="table-container" style="display:none;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 150px;">CLIENTE</th>
+                            <th style="width: 200px;">ESTILO</th>
+                            <th style="width: 140px;">n.BDxpda</th>
+                            <th style="width: 140px;">n.ESTAMPxpda</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbody-artes-asignar"></tbody>
+                </table>
+            </div>
+        </section>
 
                 <!-- VISTA HABILITADO (Filtrado de Enumerado con estado_enumerado = OK ENM / OK S/ENM) -->
                 <section id="view-habilitado" class="view-section">
@@ -803,7 +891,7 @@
                                     <th style="width: 80px;">ESTADO_BLOQS</th>
                                     <th style="width: 80px;">COLL o TAP?</th>
                                     <th style="width: 100px;">estado_corte_bloques</th>
-                                    <th style="width: 100px;">estado_transfer</th>
+                                    <th style="width: 60px; text-align:center;">TRSF</th>
                                     <th style="width: 100px;">estado_bordado</th>
                                     <th style="width: 100px;">estado_estampado</th>
                                     <th style="width: 100px;">estado_habilitado</th>
@@ -1223,7 +1311,9 @@
                 "ESTADO BLOQUES", "ESTADO_BLOQUES", "ESTADO_BLOQUES", "estado_bloques",
                 "ESTADO COLL TAP", "ESTADO_COLL_TAP", "ESTADO_COLL_TAP", "estado_coll_tap",
                 /* Columnas para Transfer */
-                "n.transfxpda", "N.TRANSFXPDA", "estado_transfer", "ESTADO_TRANSFER"
+                    "n.transfxpda", "N.TRANSFXPDA", "estado_transfer", "ESTADO_TRANSFER",
+                    /* Columnas nuevas para Artes asignar */
+                    "n.BDxpda", "n.BDxpda", "n.ESTAMPxpda", "n.ESTAMPxpda"
                 , "tipo-transfer", "TIPO-TRANSFER", "tipo_transfer"
             ];
             
@@ -2061,6 +2151,16 @@
                             const avgCur = avgTransfByClienteEstilo(clienteCur, estiloCur);
                             nTransfVal = (avgCur !== null) ? avgCur : 'LLEVA?';
                         }
+                        // Normalize nTransf and tipo-transfer to detect 'NO LLEVA' values
+                        const nTransfNormForCheck = (nTransfVal || '').toString().toUpperCase().trim();
+                        const tipoTransferRaw = getVal(row, 'tipo-transfer') || getVal(row, 'tipo_transfer') || getVal(row, 'TIPO-TRANSFER') || '';
+                        const tipoTransferNorm = (tipoTransferRaw || '').toString().toUpperCase().trim();
+
+                        // If either n.transfxpda or tipo-transfer indicate NO LLEVA, skip this row
+                        if (nTransfNormForCheck.indexOf('NO LLEVA') !== -1 || tipoTransferNorm.indexOf('NO LLEVA') !== -1) {
+                            continue;
+                        }
+
                         // Si estamos en los sub-tabs normales de Transfer (X PROG o PROG), mostrar solo texto
                         if (currentTransferFilter === 'X PROG' || currentTransferFilter === 'PROG') {
                             tdTransfxpda.style.textAlign = 'center';
@@ -2070,14 +2170,15 @@
                             const selTransf = document.createElement('select');
                             selTransf.className = 'table-select';
                             selTransf.setAttribute('data-row-index', i);
+                            const nSelNorm = (nTransfVal || '').toString().toUpperCase().trim();
                             selTransf.innerHTML = `
-                                <option value="LLEVA?" ${nTransfVal === '' || nTransfVal === 'LLEVA?' ? 'selected' : ''}>LLEVA?</option>
-                                <option value="NO LLEVA" ${nTransfVal === 'NO LLEVA' ? 'selected' : ''}>NO LLEVA</option>
-                                <option value="1" ${nTransfVal == '1' ? 'selected' : ''}>1</option>
-                                <option value="2" ${nTransfVal == '2' ? 'selected' : ''}>2</option>
-                                <option value="3" ${nTransfVal == '3' ? 'selected' : ''}>3</option>
-                                <option value="4" ${nTransfVal == '4' ? 'selected' : ''}>4</option>
-                                <option value="5" ${nTransfVal == '5' ? 'selected' : ''}>5</option>
+                                <option value="LLEVA?" ${(nSelNorm === '' || nSelNorm === 'LLEVA?') ? 'selected' : ''}>LLEVA?</option>
+                                <option value="NO LLEVA" ${(nSelNorm.indexOf('NO LLEVA') !== -1) ? 'selected' : ''}>NO LLEVA</option>
+                                <option value="1" ${(nSelNorm === '1') ? 'selected' : ''}>1</option>
+                                <option value="2" ${(nSelNorm === '2') ? 'selected' : ''}>2</option>
+                                <option value="3" ${(nSelNorm === '3') ? 'selected' : ''}>3</option>
+                                <option value="4" ${(nSelNorm === '4') ? 'selected' : ''}>4</option>
+                                <option value="5" ${(nSelNorm === '5') ? 'selected' : ''}>5</option>
                             `;
                             selTransf.onchange = function() { updateRow(i, 'n.transfxpda', this.value, this); };
                             tdTransfxpda.appendChild(selTransf);
@@ -2671,7 +2772,7 @@
                 const estadoCollTap = getVal(row, "ESTADO COLL TAP") || getVal(row, "ESTADO_COLL_TAP") || getVal(row, "estado_coll_tap") || "";
 
                 // Determinar si mostrar el botón de tendido (solo en sub-tabs PROG 1T/2T/3T)
-                const showTendidoBtn = (currentCorteFilter === 'PROG 1T' || currentCorteFilter === 'PROG 2T' || currentCorteFilter === 'PROG 3T');
+                const showTendidoBtn = (currentCorteFilter === 'PROG 1T' || currentCorteFilter === 'PROG 2T' || currentCorteFilter === 'PROG 3T') && !isHabilitadoView();
                 const tendidoBtnHtml = showTendidoBtn 
                     ? `<button class="btn-tendido" onclick="abrirModalTendido(${rowIndex}, '${op}', '${corte}', '${String(color).replace(/'/g, "\\'")}', ${pdsRaw})" title="Dividir en tendidos">+</button>` 
                     : '';
@@ -3324,6 +3425,7 @@
                 else if (viewName === 'corte-bloques') renderCorteBloques();
                 else if (viewName === 'enumerado') renderEnumerado();
                 else if (viewName === 'transfer') renderTransfer();
+                else if (viewName === 'artes') renderArtes();
                 else if (viewName === 'habilitado') renderHabilitado();
             } catch (e) { console.error('Error re-rendering view after switch:', e); }
         };
@@ -3564,6 +3666,14 @@
                 const uniqueTipos = Array.from(new Set((data.tipoValues || []).filter(v => v && v.toString().trim() !== '')));
                 const tipoRepresentativo = (uniqueTipos.length === 1) ? uniqueTipos[0] : '';
 
+                // Excluir grupos cuyo tipo-transfer o n.transfxpda indiquen 'NO LLEVA'
+                const hasTipoNoLleva = (data.tipoValues || []).some(v => (v || '').toString().toUpperCase().indexOf('NO LLEVA') !== -1);
+                const nTransfCalcNorm = (nTransfCalculado || '').toString().toUpperCase().trim();
+                const hasNTransfNoLleva = nTransfCalcNorm.indexOf('NO LLEVA') !== -1;
+                if (hasTipoNoLleva || hasNTransfNoLleva) {
+                    return; // skip adding this grupo to estiloMap
+                }
+
                 estiloMap.set(key, {
                     cliente: data.cliente,
                     estilo: data.estilo,
@@ -3627,14 +3737,16 @@
                 sel.onchange = function() {
                     handleNTransfChange(this);
                 };
+                // Normalize nTransf to avoid mismatches due to case or surrounding whitespace
+                const nValNorm = (data.nTransf || '').toString().toUpperCase().trim();
                 sel.innerHTML = `
-                    <option value="LLEVA?" ${data.nTransf === '' || data.nTransf === 'LLEVA?' ? 'selected' : ''}>LLEVA?</option>
-                    <option value="NO LLEVA" ${data.nTransf === 'NO LLEVA' ? 'selected' : ''}>NO LLEVA</option>
-                    <option value="1" ${data.nTransf == '1' ? 'selected' : ''}>1</option>
-                    <option value="2" ${data.nTransf == '2' ? 'selected' : ''}>2</option>
-                    <option value="3" ${data.nTransf == '3' ? 'selected' : ''}>3</option>
-                    <option value="4" ${data.nTransf == '4' ? 'selected' : ''}>4</option>
-                    <option value="5" ${data.nTransf == '5' ? 'selected' : ''}>5</option>
+                    <option value="LLEVA?" ${(nValNorm === '' || nValNorm === 'LLEVA?') ? 'selected' : ''}>LLEVA?</option>
+                    <option value="NO LLEVA" ${(nValNorm.indexOf('NO LLEVA') !== -1) ? 'selected' : ''}>NO LLEVA</option>
+                    <option value="1" ${(nValNorm === '1') ? 'selected' : ''}>1</option>
+                    <option value="2" ${(nValNorm === '2') ? 'selected' : ''}>2</option>
+                    <option value="3" ${(nValNorm === '3') ? 'selected' : ''}>3</option>
+                    <option value="4" ${(nValNorm === '4') ? 'selected' : ''}>4</option>
+                    <option value="5" ${(nValNorm === '5') ? 'selected' : ''}>5</option>
                 `;
                 tdTransf.appendChild(sel);
                 tr.appendChild(tdTransf);
@@ -3704,6 +3816,8 @@
                             if (selectElement) selectElement.disabled = false;
                             updateCounters();
                             renderTransfer();
+                            // Also refresh the 'Asignar #Trf' table if visible so the select reflects the new value
+                            try { renderTransferAsignar(); } catch(e) { /* ignore if not present */ }
                         }
                     }).catch(err => {
                         console.error('Error al guardar fila', rowIndex, err);
@@ -3719,6 +3833,358 @@
         window.guardarCambiosAsignarTransfer = function() {
             alert('Los cambios se guardan automáticamente al seleccionar un valor para cada estilo.');
         };
+
+        // --- ARTES (Pza) : filtros y renderizado ---
+        window.currentArtesFilter = 'BORDADO';
+
+        window.filterArtes = function(filterState, btn) {
+            window.currentArtesFilter = filterState;
+            document.querySelectorAll('#view-artes .sub-tab').forEach(el => el.classList.remove('active'));
+            if (btn) btn.classList.add('active');
+
+            const bordadoContainer = document.getElementById('table-container-artes-bordado');
+            const estampadoContainer = document.getElementById('table-container-artes-estampado');
+            const asignarContainer = document.getElementById('table-container-artes-asignar');
+            const asignarFilters = document.getElementById('artes-asignar-filters');
+
+            if (filterState === 'ASIGNAR') {
+                if (bordadoContainer) bordadoContainer.style.display = 'none';
+                if (estampadoContainer) estampadoContainer.style.display = 'none';
+                if (asignarContainer) asignarContainer.style.display = 'block';
+                if (asignarFilters) asignarFilters.style.display = 'flex';
+                renderArtesAsignar();
+            } else if (filterState === 'ESTAMPADO') {
+                if (bordadoContainer) bordadoContainer.style.display = 'none';
+                if (estampadoContainer) estampadoContainer.style.display = 'block';
+                if (asignarContainer) asignarContainer.style.display = 'none';
+                if (asignarFilters) asignarFilters.style.display = 'none';
+                renderArtesEstampado();
+            } else {
+                if (bordadoContainer) bordadoContainer.style.display = 'block';
+                if (estampadoContainer) estampadoContainer.style.display = 'none';
+                if (asignarContainer) asignarContainer.style.display = 'none';
+                if (asignarFilters) asignarFilters.style.display = 'none';
+                renderArtesBordado();
+            }
+        };
+
+        window.renderArtes = function() {
+            if (window.currentArtesFilter === 'ASIGNAR') renderArtesAsignar();
+            else if (window.currentArtesFilter === 'ESTAMPADO') renderArtesEstampado();
+            else renderArtesBordado();
+        };
+
+        window.renderArtesBordado = function() {
+            const tbody = document.getElementById('tbody-artes-bordado');
+            if (!tbody) return; tbody.innerHTML = '';
+            const idxEv = findHeaderIndexCaseInsensitive('estado_enumerado');
+            for (let i = 1; i < rawData.length; i++) {
+                const row = rawData[i];
+                let ev = '';
+                try {
+                    if (idxEv !== -1 && row && row[idxEv] !== undefined) ev = row[idxEv];
+                    else ev = getVal(row, 'estado_enumerado') || getVal(row, 'ESTADO ENUMERADO') || getVal(row, 'ESTADO_ENumerado') || '';
+                } catch (e) { ev = getVal(row, 'estado_enumerado') || '' }
+                const evNorm = (ev || '').toString().toUpperCase().trim();
+                if (!(evNorm === 'OK PAQUETEO' || evNorm === 'OK ENM' || evNorm === 'OK S/ENM')) continue;
+
+                // Filtrar por n.BDxpda: mostrar solo si es vacío o 1-4; excluir si indica NO LLEVA
+                const rawNbd = getVal(row, 'n.BDxpda') || getVal(row, 'N.BDXPDA') || getVal(row, 'n.BDxpda ') || '';
+                const nbdNorm = (rawNbd || '').toString().toUpperCase().trim();
+                if (nbdNorm.indexOf('NO LLEVA') !== -1) continue;
+                if (nbdNorm !== '' && ['1','2','3','4'].indexOf(nbdNorm) === -1) continue;
+
+                const tr = document.createElement('tr');
+
+                // F. DESPACHO (formateada)
+                const tdFDesp = document.createElement('td'); tdFDesp.className = 'date-cell';
+                tdFDesp.innerText = formatValue(getVal(row, 'F. DESPACHO') || getVal(row, 'F DESPACHO') || '', 'date');
+                tr.appendChild(tdFDesp);
+
+                // F.ING.COST
+                const tdFCost = document.createElement('td'); tdFCost.className = 'date-cell';
+                tdFCost.innerText = formatValue(getVal(row, 'F.ING.COST') || getVal(row, 'F ING COST') || '', 'date');
+                tr.appendChild(tdFCost);
+
+                // CLIENTE (normalizado)
+                const tdCliente = document.createElement('td'); tdCliente.innerText = normalizeClientForTransfer(getVal(row, 'CLIENTE') || ''); tr.appendChild(tdCliente);
+
+                // OC
+                const tdOC = document.createElement('td');
+                let ocVal = getVal(row, 'OC') || '';
+                if ((!ocVal || String(ocVal).trim() === '')) {
+                    const opVal = getVal(row, 'OP') || getVal(row, 'OP TELA') || getVal(row, 'OP-PTDA') || '';
+                    const corteVal = getVal(row, 'CORTE') || getVal(row, 'PARTIDA') || '';
+                    if (opVal && corteVal) ocVal = `${String(opVal).trim()}-${String(corteVal).trim()}`;
+                }
+                tdOC.innerText = ocVal; tr.appendChild(tdOC);
+
+                // COLOR
+                const tdColor = document.createElement('td'); tdColor.innerText = abbreviateHeather(getVal(row, 'COLOR') || ''); tr.appendChild(tdColor);
+
+                // PDS
+                const tdPds = document.createElement('td'); tdPds.style.textAlign = 'center'; tdPds.innerText = getVal(row, 'PDS') || getVal(row, 'PDS GIRADAS') || ''; tr.appendChild(tdPds);
+
+                // PRENDA
+                const tdPrenda = document.createElement('td'); tdPrenda.innerText = getVal(row, 'PRENDA') || ''; tr.appendChild(tdPrenda);
+
+                // TIPO CERT.
+                const tdTipo = document.createElement('td'); tdTipo.innerText = getVal(row, 'TIPO CERT.') || getVal(row, 'TIPO CERTIFICADO') || ''; tr.appendChild(tdTipo);
+
+                // n.BDxpda (nuevo)
+                const tdNbd = document.createElement('td');
+                const valNbd = getVal(row, 'n.BDxpda') || getVal(row, 'N.BDXPDA') || getVal(row, 'n.BDx pda') || '';
+                tdNbd.innerText = valNbd;
+                tr.appendChild(tdNbd);
+
+                // estado_bordado
+                const tdEst = document.createElement('td'); tdEst.innerText = getVal(row, 'estado_bordado') || ''; tr.appendChild(tdEst);
+
+                tbody.appendChild(tr);
+            }
+        };
+
+        window.renderArtesEstampado = function() {
+            const tbody = document.getElementById('tbody-artes-estampado');
+            if (!tbody) return; tbody.innerHTML = '';
+            const idxEv = findHeaderIndexCaseInsensitive('estado_enumerado');
+            for (let i = 1; i < rawData.length; i++) {
+                const row = rawData[i];
+                let ev = '';
+                try {
+                    if (idxEv !== -1 && row && row[idxEv] !== undefined) ev = row[idxEv];
+                    else ev = getVal(row, 'estado_enumerado') || getVal(row, 'ESTADO ENUMERADO') || getVal(row, 'ESTADO_ENumerado') || '';
+                } catch (e) { ev = getVal(row, 'estado_enumerado') || '' }
+                const evNorm = (ev || '').toString().toUpperCase().trim();
+                if (!(evNorm === 'OK PAQUETEO' || evNorm === 'OK ENM' || evNorm === 'OK S/ENM')) continue;
+
+                // Filtrar por n.ESTAMPxpda: mostrar solo si es vacío o 1-4; excluir si indica NO LLEVA
+                const rawNest = getVal(row, 'n.ESTAMPxpda') || getVal(row, 'N.ESTAMPXPDA') || getVal(row, 'n.ESTAMP xpda') || '';
+                const nestNorm = (rawNest || '').toString().toUpperCase().trim();
+                if (nestNorm.indexOf('NO LLEVA') !== -1) continue;
+                if (nestNorm !== '' && ['1','2','3','4'].indexOf(nestNorm) === -1) continue;
+
+                const tr = document.createElement('tr');
+
+                // F. DESPACHO (formateada)
+                const tdFDesp = document.createElement('td'); tdFDesp.className = 'date-cell';
+                tdFDesp.innerText = formatValue(getVal(row, 'F. DESPACHO') || getVal(row, 'F DESPACHO') || '', 'date');
+                tr.appendChild(tdFDesp);
+
+                // F.ING.COST
+                const tdFCost = document.createElement('td'); tdFCost.className = 'date-cell';
+                tdFCost.innerText = formatValue(getVal(row, 'F.ING.COST') || getVal(row, 'F ING COST') || '', 'date');
+                tr.appendChild(tdFCost);
+
+                // CLIENTE (normalizado)
+                const tdCliente = document.createElement('td'); tdCliente.innerText = normalizeClientForTransfer(getVal(row, 'CLIENTE') || ''); tr.appendChild(tdCliente);
+
+                // OC
+                const tdOC = document.createElement('td');
+                let ocVal = getVal(row, 'OC') || '';
+                if ((!ocVal || String(ocVal).trim() === '')) {
+                    const opVal = getVal(row, 'OP') || getVal(row, 'OP TELA') || getVal(row, 'OP-PTDA') || '';
+                    const corteVal = getVal(row, 'CORTE') || getVal(row, 'PARTIDA') || '';
+                    if (opVal && corteVal) ocVal = `${String(opVal).trim()}-${String(corteVal).trim()}`;
+                }
+                tdOC.innerText = ocVal; tr.appendChild(tdOC);
+
+                // COLOR
+                const tdColor = document.createElement('td'); tdColor.innerText = abbreviateHeather(getVal(row, 'COLOR') || ''); tr.appendChild(tdColor);
+
+                // PDS
+                const tdPds = document.createElement('td'); tdPds.style.textAlign = 'center'; tdPds.innerText = getVal(row, 'PDS') || getVal(row, 'PDS GIRADAS') || ''; tr.appendChild(tdPds);
+
+                // PRENDA
+                const tdPrenda = document.createElement('td'); tdPrenda.innerText = getVal(row, 'PRENDA') || ''; tr.appendChild(tdPrenda);
+
+                // TIPO CERT.
+                const tdTipo = document.createElement('td'); tdTipo.innerText = getVal(row, 'TIPO CERT.') || getVal(row, 'TIPO CERTIFICADO') || ''; tr.appendChild(tdTipo);
+
+                // n.ESTAMPxpda (nuevo)
+                const tdNest = document.createElement('td');
+                const valNest = getVal(row, 'n.ESTAMPxpda') || getVal(row, 'N.ESTAMPXPDA') || getVal(row, 'n.ESTAMP xpda') || '';
+                tdNest.innerText = valNest;
+                tr.appendChild(tdNest);
+
+                // estado_estampado
+                const tdEst = document.createElement('td'); tdEst.innerText = getVal(row, 'estado_estampado') || ''; tr.appendChild(tdEst);
+
+                tbody.appendChild(tr);
+            }
+        };
+
+        window.renderArtesAsignar = function() {
+            const tbody = document.getElementById('tbody-artes-asignar');
+            if (!tbody) return; tbody.innerHTML = '';
+
+            // Poblar selects de cliente y estilo
+            const selectCliente = document.getElementById('filter-artes-cliente');
+            const selectEstilo = document.getElementById('filter-artes-estilo');
+            const filterCliente = document.getElementById('filter-artes-cliente')?.value || '';
+            const filterEstilo = document.getElementById('filter-artes-estilo')?.value || '';
+
+            if (selectCliente && selectCliente.options.length <= 1) {
+                const clientes = new Set();
+                for (let i = 1; i < rawData.length; i++) {
+                    const clienteRaw = getVal(rawData[i], 'CLIENTE');
+                    const clienteNorm = normalizeClientForTransfer(clienteRaw || '');
+                    if (clienteNorm) clientes.add(clienteNorm);
+                }
+                Array.from(clientes).sort().forEach(c => {
+                    const opt = document.createElement('option'); opt.value = c; opt.textContent = c; selectCliente.appendChild(opt);
+                });
+            }
+
+            if (selectEstilo) {
+                selectEstilo.innerHTML = '';
+                const defaultOpt = document.createElement('option'); defaultOpt.value = ''; defaultOpt.textContent = 'Todos los estilos'; selectEstilo.appendChild(defaultOpt);
+                const estilos = new Set();
+                for (let i = 1; i < rawData.length; i++) {
+                    const row = rawData[i];
+                    const clienteRow = normalizeClientForTransfer(getVal(row,'CLIENTE') || '');
+                    if (filterCliente && clienteRow !== filterCliente) continue;
+                    const estilo = getVal(row,'ESTILO'); if (estilo) estilos.add(estilo);
+                }
+                Array.from(estilos).sort().forEach(e => { const opt = document.createElement('option'); opt.value = e; opt.textContent = e; selectEstilo.appendChild(opt); });
+                if (filterEstilo) {
+                    const exists = Array.from(selectEstilo.options).some(o => o.value === filterEstilo);
+                    if (!exists) selectEstilo.value = '';
+                    else selectEstilo.value = filterEstilo;
+                }
+            }
+
+            // Agrupar por CLIENTE|ESTILO
+            const grupo = new Map();
+            for (let i = 1; i < rawData.length; i++) {
+                const row = rawData[i];
+                const cliente = normalizeClientForTransfer(getVal(row,'CLIENTE') || '');
+                const estilo = getVal(row,'ESTILO') || '';
+                if (!estilo) continue;
+                if (filterCliente && cliente !== filterCliente) continue;
+                if (filterEstilo && estilo !== filterEstilo) continue;
+                const key = cliente + '|' + estilo;
+                if (!grupo.has(key)) grupo.set(key, {cliente, estilo, rows: []});
+                grupo.get(key).rows.push(i);
+            }
+
+            Array.from(grupo.values()).sort((a,b)=> (a.cliente||'').localeCompare(b.cliente) || (a.estilo||'').localeCompare(b.estilo)).forEach(g => {
+                const tr = document.createElement('tr');
+                const tdCliente = document.createElement('td'); tdCliente.textContent = normalizeClientForTransfer(g.cliente || ''); tr.appendChild(tdCliente);
+                const tdEstilo = document.createElement('td'); tdEstilo.innerHTML = `<strong>${g.estilo}</strong>`; tr.appendChild(tdEstilo);
+
+                const tdBord = document.createElement('td');
+                const selB = document.createElement('select'); selB.className='table-select';
+                // determinar valor representativo para n.BDxpda en el grupo
+                (function(){
+                    const colName = 'n.BDxpda';
+                    let valToSelect = '';
+                    let idx = getColIndex(colName);
+                    if (idx === -1) {
+                        for (const k in colMap) { if (k.toString().toUpperCase().indexOf(colName.toUpperCase())!==-1) { idx = colMap[k]; break; } }
+                    }
+                    const counts = {};
+                    for (const rIdx of g.rows) {
+                        const rv = (idx !== -1 && idx !== undefined) ? rawData[rIdx][idx] : getVal(rawData[rIdx], colName);
+                        const v = (rv===undefined || rv===null) ? '' : String(rv).toUpperCase().trim();
+                        counts[v] = (counts[v]||0) + 1;
+                    }
+                    // elegir NO LLEVA si presente, sino el más frecuente
+                    if (counts['NO LLEVA']) valToSelect = 'NO LLEVA';
+                    else {
+                        let best = ''; let bestC = 0;
+                        for (const k in counts) { if (k!=='' && counts[k] > bestC) { best = k; bestC = counts[k]; } }
+                        valToSelect = best || '';
+                    }
+                    selB.innerHTML = `<option value="NO LLEVA">NO LLEVA</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option>`;
+                    if (valToSelect) {
+                        try { selB.value = valToSelect; } catch(e) {}
+                    }
+                    selB.onchange = function(){ updateClienteEstiloArtes(g.cliente, g.estilo, this.value, 'n.BDxpda', this); };
+                })();
+                tdBord.appendChild(selB); tr.appendChild(tdBord);
+
+                const tdEst = document.createElement('td');
+                const selE = document.createElement('select'); selE.className='table-select';
+                // determinar valor representativo para n.ESTAMPxpda en el grupo
+                (function(){
+                    const colName = 'n.ESTAMPxpda';
+                    let valToSelect = '';
+                    let idx = getColIndex(colName);
+                    if (idx === -1) {
+                        for (const k in colMap) { if (k.toString().toUpperCase().indexOf(colName.toUpperCase())!==-1) { idx = colMap[k]; break; } }
+                    }
+                    const counts = {};
+                    for (const rIdx of g.rows) {
+                        const rv = (idx !== -1 && idx !== undefined) ? rawData[rIdx][idx] : getVal(rawData[rIdx], colName);
+                        const v = (rv===undefined || rv===null) ? '' : String(rv).toUpperCase().trim();
+                        counts[v] = (counts[v]||0) + 1;
+                    }
+                    if (counts['NO LLEVA']) valToSelect = 'NO LLEVA';
+                    else {
+                        let best = ''; let bestC = 0;
+                        for (const k in counts) { if (k!=='' && counts[k] > bestC) { best = k; bestC = counts[k]; } }
+                        valToSelect = best || '';
+                    }
+                    selE.innerHTML = `<option value="NO LLEVA">NO LLEVA</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option>`;
+                    if (valToSelect) {
+                        try { selE.value = valToSelect; } catch(e) {}
+                    }
+                    selE.onchange = function(){ updateClienteEstiloArtes(g.cliente, g.estilo, this.value, 'n.ESTAMPxpda', this); };
+                })();
+                tdEst.appendChild(selE); tr.appendChild(tdEst);
+
+                tbody.appendChild(tr);
+            });
+        };
+
+        window.updateClienteEstiloArtes = function(cliente, estilo, value, colName, selectElement) {
+            if (!cliente || !estilo) return;
+            // intentar encontrar índice de columna por nombre en colMap
+            let idx = getColIndex(colName);
+            if (idx === -1) {
+                // intenta buscar en colMap por variantes
+                for (const k in colMap) { if (k.toString().toUpperCase().indexOf(colName.toUpperCase())!==-1) { idx = colMap[k]; break; } }
+            }
+            if (idx === -1 || idx === undefined) {
+                // no se encontró columna; solo actualizar localmente
+                for (let i=1;i<rawData.length;i++){
+                    const rCliente = getVal(rawData[i],'CLIENTE')||'';
+                    const rEstilo = getVal(rawData[i],'ESTILO')||'';
+                    if (rCliente===cliente && rEstilo===estilo) {
+                        rawData[i][idx] = value;
+                    }
+                }
+                alert('Actualizado localmente. Columna no identificada para guardar en servidor.');
+                return;
+            }
+
+            // Recolectar filas a actualizar
+            const rowsToUpdate = [];
+            for (let i=1;i<rawData.length;i++){
+                const rCliente = getVal(rawData[i],'CLIENTE')||'';
+                const rEstilo = getVal(rawData[i],'ESTILO')||'';
+                if (rCliente===cliente && rEstilo===estilo) rowsToUpdate.push(i);
+            }
+            if (rowsToUpdate.length===0) { alert('No se encontraron filas para actualizar'); return; }
+
+            if (selectElement) selectElement.disabled = true;
+            let completed=0; const total=rowsToUpdate.length;
+            rowsToUpdate.forEach((rowIndex,i)=>{
+                setTimeout(()=>{
+                    // actualizar localmente
+                    rawData[rowIndex][idx]=value;
+                    fetch(WEB_APP_URL, {
+                        method: 'POST', mode: 'no-cors', headers: {'Content-Type':'application/json'},
+                        body: JSON.stringify({ action:'update', row: rowIndex, colName: colName, value: value })
+                    }).then(()=>{
+                        completed++; if (completed===total) { if (selectElement) selectElement.disabled=false; updateCounters(); renderArtes(); }
+                    }).catch(err=>{ console.error('Err',err); completed++; if (completed===total && selectElement) selectElement.disabled=false; });
+                }, i*100);
+            });
+        };
+
+        window.guardarCambiosAsignarArtes = function() { alert('Los cambios se guardan automáticamente al seleccionar un valor para cada estilo.'); };
 
         function renderCorteBloques() {
             const tbody = document.getElementById('tbody-corte-bloques');
