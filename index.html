@@ -503,6 +503,85 @@
             color: white;
         }
     </style>
+    <style>
+        /* Estilos para botón flotante del embudo */
+        #stock-funnel-button {
+            position: fixed;
+            top: 38px;
+            right: 12px;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: var(--white);
+            border: 2px solid var(--primary);
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 6px 18px rgba(16,24,40,0.12);
+            z-index: 2200;
+            cursor: pointer;
+            transition: transform 0.12s ease, box-shadow 0.12s ease;
+        }
+        #stock-funnel-button:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(16,24,40,0.16); }
+
+        /* Contenedor del gráfico (ahora barras horizontales) */
+        #funnel-chart { min-height: 220px; display: flex; flex-direction: column; gap: 10px; align-items: stretch; }
+        .funnel-block {
+            display: flex;
+            gap: 4px; /* reducido para acercar label/bar/valor */
+            align-items: center;
+            padding: 1px 2px; /* menos padding vertical/horizontal */
+            border-radius: 6px;si
+            background: transparent;
+            box-shadow: 0 4px 12px rgba(2,6,23,0.04);
+        }
+        .funnel-label { width: 120px; font-size: 13px; font-weight: 700; color: #374151; padding-left:6px; }
+        .funnel-bar {
+            height: 28px;
+            flex: 1;
+            background: rgba(15,23,42,0.06);
+            border-radius: 999px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+        }
+        .bar-fill {
+            height: 100%;
+            border-radius: 999px;
+            display: block;
+            transition: width 350ms ease;
+        }
+        .funnel-value {
+            width: 90px;
+            text-align: right;
+            font-weight: 800;
+            color: #374151;
+            padding-left: 12px;
+            font-size: 13px;
+        }
+        /* Adjust label/value contrast for specific color classes (use on .bar-fill) */
+        .c-bloqueo { background: #f59e0b; }
+        .c-lavanderia { background: #10b981; }
+        .c-corte-pzas { background: #2563eb; }
+        .c-corte-bloques { background: #f97316; }
+        .c-enumerado { background: #fb923c; }
+        .c-transfer { background: #f59e0b; }
+        .c-bordado { background: #fbbf24; }
+        .c-estampado { background: #059669; }
+        .c-habilitado { background: #6b7280; }
+
+        /* Colores aproximados a los de la imagen referencial */
+        .c-bloqueo { background: #fef3c7; color: #92400e; }
+        .c-lavanderia { background: #dcfce7; color: #064e3b; }
+        .c-corte-pzas { background: #dbeafe; color: #1e3a8a; }
+        .c-corte-bloques { background: #fef3e2; color: #92400e; }
+        .c-enumerado { background: #fff7ed; color: #92400e; }
+        .c-transfer { background: #fff4e6; color: #92400e; }
+        .c-bordado { background: #fff7cc; color: #92400e; }
+        .c-estampado { background: #ecfdf5; color: #065f46; }
+        .c-habilitado { background: #f3f4f6; color: #111827; }
+    </style>
 </head>
 <body>
 
@@ -528,6 +607,7 @@
                 <div>
                     <div class="modal-title" id="modal-tendido-title">OC: ---</div>
                     <div class="modal-subtitle" id="modal-tendido-subtitle">COLOR: --- | PDS: ---</div>
+            </html>
                 </div>
                 <button class="modal-close" onclick="cerrarModalTendido()">&times;</button>
             </div>
@@ -593,6 +673,30 @@
             </table>
             <div class="modal-buttons">
                 <button class="btn-modal btn-limpiar" onclick="cerrarModalOC()">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- BOTÓN FLOTANTE: Stock (embudo) -->
+    <div id="stock-funnel-button" title="Ver stock" onclick="openStockFunnelModal()" aria-label="Ver stock">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M3 4h18v2H3V4zM6 10h12v2H6v-2zM10 16h4v2h-4v-2z" fill="currentColor"/>
+        </svg>
+    </div>
+
+    <!-- MODAL STOCK FUNNEL -->
+    <div id="modal-stock-funnel" class="modal-overlay" onclick="if(event.target === this) closeStockFunnelModal()">
+        <div class="modal-content" style="max-width:480px; width:56%;">
+            <div class="modal-header">
+                <div>
+                    <div class="modal-title">Stock por Estado</div>
+                    <div class="modal-subtitle">Visualización tipo embudo - tamaños proporcionales a PDS</div>
+                </div>
+                <button class="modal-close" onclick="closeStockFunnelModal()">&times;</button>
+            </div>
+            <div id="funnel-chart" style="padding:8px 6px 16px 6px;">Cargando...</div>
+            <div style="display:flex; justify-content:flex-end; gap:8px;">
+                <button class="btn-modal btn-limpiar" onclick="closeStockFunnelModal()">Cerrar</button>
             </div>
         </div>
     </div>
@@ -787,6 +891,18 @@
                 <button id="btn-artes-asignar" class="sub-tab" onclick="filterArtes('ASIGNAR', this)">
                     Asginar Artes
                 </button>
+            </div>
+
+            <!-- Sub-tabs específicos para Bordado: X PROG / PROG -->
+            <div id="bordado-subtabs" style="display:flex; gap:8px; align-items:center; margin-bottom:10px;">
+                <button id="btn-bordado-xprog" class="sub-tab active" onclick="filterBordado('X PROG', this)">X PROG <span class="kg-badge" id="artes-bordado-xprog-count">[-]</span></button>
+                <button id="btn-bordado-prog" class="sub-tab" onclick="filterBordado('PROG', this)">PROG <span class="kg-badge" id="artes-bordado-prog-count">[-]</span></button>
+            </div>
+
+            <!-- Sub-tabs específicos para Estampado: X PROG / PROG (oculto hasta activar Estampado) -->
+            <div id="estampado-subtabs" style="display:none; gap:8px; align-items:center; margin-bottom:10px;">
+                <button id="btn-estampado-xprog" class="sub-tab active" onclick="filterEstampado('X PROG', this)">X PROG <span class="kg-badge" id="artes-estampado-xprog-count">[-]</span></button>
+                <button id="btn-estampado-prog" class="sub-tab" onclick="filterEstampado('PROG', this)">PROG <span class="kg-badge" id="artes-estampado-prog-count">[-]</span></button>
             </div>
 
             <!-- Filtros para Asignar Artes -->
@@ -1112,6 +1228,50 @@
             }
         };
 
+        // Maneja cambios en n.BDxpda para Asignar Artes. Si 'Para todo' está marcado,
+        // aplica el mismo valor a todos los selects visibles en '#tbody-artes-asignar'.
+        window.handleNBDChange = function(selectElement) {
+            const chk = document.getElementById('chk-artes-para-todo');
+            const val = selectElement.value;
+            if (chk && chk.checked) {
+                const all = Array.from(document.querySelectorAll('#tbody-artes-asignar select.sel-nbd-artes'));
+                all.forEach((s, i) => {
+                    setTimeout(() => {
+                        try {
+                            s.disabled = true;
+                            s.value = val;
+                            updateClienteEstiloArtes(s.dataset.cliente, s.dataset.estilo, val, 'n.BDxpda', s);
+                        } catch (e) { console.error('Error aplicando n.BDxpda masivo', e); }
+                    }, i * 120);
+                });
+                chk.checked = false;
+            } else {
+                updateClienteEstiloArtes(selectElement.getAttribute('data-cliente'), selectElement.getAttribute('data-estilo'), selectElement.value, 'n.BDxpda', selectElement);
+            }
+        };
+
+        // Maneja cambios en n.ESTAMPxpda para Asignar Artes. Si 'Para todo' está marcado,
+        // aplica el mismo valor a todos los selects visibles en '#tbody-artes-asignar'.
+        window.handleNESTChange = function(selectElement) {
+            const chk = document.getElementById('chk-artes-para-todo');
+            const val = selectElement.value;
+            if (chk && chk.checked) {
+                const all = Array.from(document.querySelectorAll('#tbody-artes-asignar select.sel-nest-artes'));
+                all.forEach((s, i) => {
+                    setTimeout(() => {
+                        try {
+                            s.disabled = true;
+                            s.value = val;
+                            updateClienteEstiloArtes(s.dataset.cliente, s.dataset.estilo, val, 'n.ESTAMPxpda', s);
+                        } catch (e) { console.error('Error aplicando n.ESTAMPxpda masivo', e); }
+                    }, i * 120);
+                });
+                chk.checked = false;
+            } else {
+                updateClienteEstiloArtes(selectElement.getAttribute('data-cliente'), selectElement.getAttribute('data-estilo'), selectElement.value, 'n.ESTAMPxpda', selectElement);
+            }
+        };
+
         // Función para actualizar la columna 'tipo-transfer' en todas las filas de un CLIENTE + ESTILO
         window.updateClienteEstiloTipoTransfer = function(cliente, estilo, value, selectElement) {
             if (!cliente || !estilo) return;
@@ -1275,6 +1435,8 @@
                     if (eqBtn) eqBtn.style.display = (currentCorteFilter === 'X PROG') ? 'inline-flex' : 'none';
                 } catch (e) {}
                 document.getElementById('loader').style.display = 'none';
+                // Forzar un re-render breve después de ocultar el loader
+                try { setTimeout(function(){ try { renderArtes(); } catch(e) {} }, 200); } catch(e) {}
             } catch (error) {
                 console.error(error);
                 showError("Error procesando datos: " + error.message);
@@ -1313,7 +1475,9 @@
                 /* Columnas para Transfer */
                     "n.transfxpda", "N.TRANSFXPDA", "estado_transfer", "ESTADO_TRANSFER",
                     /* Columnas nuevas para Artes asignar */
-                    "n.BDxpda", "n.BDxpda", "n.ESTAMPxpda", "n.ESTAMPxpda"
+                        "n.BDxpda", "n.BDxpda", "n.ESTAMPxpda", "n.ESTAMPxpda",
+                    /* Estado de artes */
+                        "estado_bordado", "ESTADO_BORDADO", "estado_estampado", "ESTADO_ESTAMPADO"
                 , "tipo-transfer", "TIPO-TRANSFER", "tipo_transfer"
             ];
             
@@ -1330,9 +1494,71 @@
             renderCorteBloques();
             renderEnumerado();
             renderTransfer();
+            // Inicializar vistas y badges de Artes (Bordado/Estampado/Asignar)
+            try { renderArtes(); } catch(e) {}
+            try { if (typeof updateArtesBadges === 'function') updateArtesBadges(); } catch(e) {}
             renderHabilitado();
             updateCounters();
         }
+
+        // Calcula y actualiza los badges (subtabs y padre) para Bordado y Estampado
+        window.updateArtesBadges = function() {
+            if (!rawData || rawData.length <= 1) return;
+            let b_pdsX = 0, b_pdsProg = 0;
+            let e_pdsX = 0, e_pdsProg = 0;
+            const idxEv = findHeaderIndexCaseInsensitive('estado_enumerado');
+
+            for (let i = 1; i < rawData.length; i++) {
+                const row = rawData[i];
+                let ev = '';
+                try {
+                    if (idxEv !== -1 && row && row[idxEv] !== undefined) ev = row[idxEv];
+                    else ev = getVal(row, 'estado_enumerado') || getVal(row, 'ESTADO ENUMERADO') || '';
+                } catch (e) { ev = getVal(row, 'estado_enumerado') || ''; }
+                const evNorm = (ev || '').toString().toUpperCase().trim();
+                if (!(evNorm === 'OK PAQUETEO' || evNorm === 'OK ENM' || evNorm === 'OK S/ENM')) continue;
+
+                // Bordado
+                try {
+                    const rawNbd = getVal(row, 'n.BDxpda') || getVal(row, 'N.BDXPDA') || getVal(row, 'n.BDxpda ') || '';
+                    const nbdNorm = (rawNbd || '').toString().toUpperCase().trim();
+                    if (nbdNorm.indexOf('NO LLEVA') === -1) {
+                        if (nbdNorm === '' || ['1','2','3','4'].indexOf(nbdNorm) !== -1) {
+                            let rawEstadoB = getVal(row, 'estado_bordado') || '';
+                            let estadoBNorm = (rawEstadoB || '').toString().trim();
+                            if (estadoBNorm === '') estadoBNorm = 'X PROG';
+                            const pdsVal = parseFloat(getVal(row, 'PDS') || getVal(row, 'PDS GIRADAS') || 0) || 0;
+                            if (estadoBNorm.toUpperCase().indexOf('PROG') !== -1 && estadoBNorm.toUpperCase() !== 'X PROG') b_pdsProg += pdsVal;
+                            else b_pdsX += pdsVal;
+                        }
+                    }
+                } catch(e) {}
+
+                // Estampado
+                try {
+                    const rawNest = getVal(row, 'n.ESTAMPxpda') || getVal(row, 'N.ESTAMPXPDA') || getVal(row, 'n.ESTAMP xpda') || '';
+                    const nestNorm = (rawNest || '').toString().toUpperCase().trim();
+                    if (nestNorm.indexOf('NO LLEVA') === -1) {
+                        if (nestNorm === '' || ['1','2','3','4'].indexOf(nestNorm) !== -1) {
+                            let rawEstadoE = getVal(row, 'estado_estampado') || '';
+                            let estadoENorm = (rawEstadoE || '').toString().trim();
+                            if (estadoENorm === '') estadoENorm = 'X PROG';
+                            const pdsVal2 = parseFloat(getVal(row, 'PDS') || getVal(row, 'PDS GIRADAS') || 0) || 0;
+                            if (estadoENorm.toUpperCase().indexOf('PROG') !== -1 && estadoENorm.toUpperCase() !== 'X PROG') e_pdsProg += pdsVal2;
+                            else e_pdsX += pdsVal2;
+                        }
+                    }
+                } catch(e) {}
+            }
+
+            try { document.getElementById('artes-bordado-xprog-count').innerText = `[${formatThousands(b_pdsX||0,0)}pds]`; } catch(e){}
+            try { document.getElementById('artes-bordado-prog-count').innerText = `[${formatThousands(b_pdsProg||0,0)}pds]`; } catch(e){}
+            try { document.getElementById('artes-pds-bordado').innerText = `[${formatThousands((b_pdsX||0)+(b_pdsProg||0),0)}pds]`; } catch(e){}
+
+            try { document.getElementById('artes-estampado-xprog-count').innerText = `[${formatThousands(e_pdsX||0,0)}pds]`; } catch(e){}
+            try { document.getElementById('artes-estampado-prog-count').innerText = `[${formatThousands(e_pdsProg||0,0)}pds]`; } catch(e){}
+            try { document.getElementById('artes-pds-estampado').innerText = `[${formatThousands((e_pdsX||0)+(e_pdsProg||0),0)}pds]`; } catch(e){}
+        };
         
         function updateCounters() {
             let b_kgX = 0, b_pdsX = 0; 
@@ -3492,6 +3718,21 @@
             }
         };
 
+        window.filterBordado = function(filterState, btn) {
+            window.currentArtesBordadoFilter = filterState;
+            document.querySelectorAll('#bordado-subtabs .sub-tab').forEach(el => el.classList.remove('active'));
+            if (btn) btn.classList.add('active');
+            renderArtesBordado();
+        };
+
+        window.currentArtesEstampadoFilter = 'X PROG';
+        window.filterEstampado = function(filterState, btn) {
+            window.currentArtesEstampadoFilter = filterState;
+            document.querySelectorAll('#estampado-subtabs .sub-tab').forEach(el => el.classList.remove('active'));
+            if (btn) btn.classList.add('active');
+            renderArtesEstampado();
+        };
+
         window.renderTransferAsignar = function() {
             const tbody = document.getElementById('tbody-transfer-asignar');
             if (!tbody) return;
@@ -3666,14 +3907,7 @@
                 const uniqueTipos = Array.from(new Set((data.tipoValues || []).filter(v => v && v.toString().trim() !== '')));
                 const tipoRepresentativo = (uniqueTipos.length === 1) ? uniqueTipos[0] : '';
 
-                // Excluir grupos cuyo tipo-transfer o n.transfxpda indiquen 'NO LLEVA'
-                const hasTipoNoLleva = (data.tipoValues || []).some(v => (v || '').toString().toUpperCase().indexOf('NO LLEVA') !== -1);
-                const nTransfCalcNorm = (nTransfCalculado || '').toString().toUpperCase().trim();
-                const hasNTransfNoLleva = nTransfCalcNorm.indexOf('NO LLEVA') !== -1;
-                if (hasTipoNoLleva || hasNTransfNoLleva) {
-                    return; // skip adding this grupo to estiloMap
-                }
-
+                // Incluir aquí también grupos con 'NO LLEVA' — este render es para "Asignar #Trf"
                 estiloMap.set(key, {
                     cliente: data.cliente,
                     estilo: data.estilo,
@@ -3836,11 +4070,22 @@
 
         // --- ARTES (Pza) : filtros y renderizado ---
         window.currentArtesFilter = 'BORDADO';
+        window.currentArtesBordadoFilter = 'X PROG';
 
         window.filterArtes = function(filterState, btn) {
             window.currentArtesFilter = filterState;
             document.querySelectorAll('#view-artes .sub-tab').forEach(el => el.classList.remove('active'));
             if (btn) btn.classList.add('active');
+
+            // Mostrar/ocultar subtabs de Bordado/Estampado según la pestaña activa
+            try {
+                const bordadoSubs = document.getElementById('bordado-subtabs');
+                const estampadoSubs = document.getElementById('estampado-subtabs');
+                if (filterState === 'BORDADO') { if (bordadoSubs) bordadoSubs.style.display = 'flex'; if (estampadoSubs) estampadoSubs.style.display = 'none'; }
+                else if (filterState === 'ESTAMPADO') { if (bordadoSubs) bordadoSubs.style.display = 'none'; if (estampadoSubs) estampadoSubs.style.display = 'flex'; }
+                else if (filterState === 'ASIGNAR') { if (bordadoSubs) bordadoSubs.style.display = 'none'; if (estampadoSubs) estampadoSubs.style.display = 'none'; }
+                else { if (bordadoSubs) bordadoSubs.style.display = 'flex'; if (estampadoSubs) estampadoSubs.style.display = 'none'; }
+            } catch(e) {}
 
             const bordadoContainer = document.getElementById('table-container-artes-bordado');
             const estampadoContainer = document.getElementById('table-container-artes-estampado');
@@ -3858,12 +4103,28 @@
                 if (estampadoContainer) estampadoContainer.style.display = 'block';
                 if (asignarContainer) asignarContainer.style.display = 'none';
                 if (asignarFilters) asignarFilters.style.display = 'none';
+                // Asegurar que el sub-tab interno de Estampado muestre el estado "activo"
+                try {
+                    const subs = document.querySelectorAll('#estampado-subtabs .sub-tab');
+                    subs.forEach(el => el.classList.remove('active'));
+                    const btnId = (window.currentArtesEstampadoFilter && window.currentArtesEstampadoFilter.toUpperCase().indexOf('PROG') !== -1 && window.currentArtesEstampadoFilter.toUpperCase() !== 'X PROG') ? 'btn-estampado-prog' : 'btn-estampado-xprog';
+                    const btn = document.getElementById(btnId);
+                    if (btn) btn.classList.add('active');
+                } catch(e) {}
                 renderArtesEstampado();
             } else {
                 if (bordadoContainer) bordadoContainer.style.display = 'block';
                 if (estampadoContainer) estampadoContainer.style.display = 'none';
                 if (asignarContainer) asignarContainer.style.display = 'none';
                 if (asignarFilters) asignarFilters.style.display = 'none';
+                // Asegurar que el sub-tab interno de Bordado muestre el estado "activo"
+                try {
+                    const subs = document.querySelectorAll('#bordado-subtabs .sub-tab');
+                    subs.forEach(el => el.classList.remove('active'));
+                    const btnId = (window.currentArtesBordadoFilter && window.currentArtesBordadoFilter.toUpperCase().indexOf('PROG') !== -1 && window.currentArtesBordadoFilter.toUpperCase() !== 'X PROG') ? 'btn-bordado-prog' : 'btn-bordado-xprog';
+                    const btn = document.getElementById(btnId);
+                    if (btn) btn.classList.add('active');
+                } catch(e) {}
                 renderArtesBordado();
             }
         };
@@ -3877,6 +4138,8 @@
         window.renderArtesBordado = function() {
             const tbody = document.getElementById('tbody-artes-bordado');
             if (!tbody) return; tbody.innerHTML = '';
+            // actualizar badges de sub-tabs Bordado (sumar PDS en lugar de contar filas)
+            let pdsX = 0, pdsProg = 0;
             const idxEv = findHeaderIndexCaseInsensitive('estado_enumerado');
             for (let i = 1; i < rawData.length; i++) {
                 const row = rawData[i];
@@ -3893,6 +4156,25 @@
                 const nbdNorm = (rawNbd || '').toString().toUpperCase().trim();
                 if (nbdNorm.indexOf('NO LLEVA') !== -1) continue;
                 if (nbdNorm !== '' && ['1','2','3','4'].indexOf(nbdNorm) === -1) continue;
+
+                // determinar estado_bordado normalizado (vacío => 'X PROG')
+                let rawEstadoB = getVal(row, 'estado_bordado') || '';
+                let estadoBNorm = (rawEstadoB || '').toString().trim();
+                if (estadoBNorm === '') estadoBNorm = 'X PROG';
+                // contar PDS para badges (sumar PDS GIRADAS / PDS)
+                const pdsVal = parseFloat(getVal(row, 'PDS') || getVal(row, 'PDS GIRADAS') || 0) || 0;
+                if (estadoBNorm.toUpperCase().indexOf('PROG') !== -1 && estadoBNorm.toUpperCase() !== 'X PROG') pdsProg += pdsVal;
+                else pdsX += pdsVal;
+
+                // Aplicar filtro por sub-tab (X PROG / PROG)
+                if (window.currentArtesBordadoFilter) {
+                    if (window.currentArtesBordadoFilter === 'PROG') {
+                        if (!(estadoBNorm.toUpperCase().indexOf('PROG') !== -1 && estadoBNorm.toUpperCase() !== 'X PROG')) continue;
+                    } else {
+                        // X PROG
+                        if (!(estadoBNorm.toUpperCase() === 'X PROG' || estadoBNorm === '')) continue;
+                    }
+                }
 
                 const tr = document.createElement('tr');
 
@@ -3937,16 +4219,31 @@
                 tdNbd.innerText = valNbd;
                 tr.appendChild(tdNbd);
 
-                // estado_bordado
-                const tdEst = document.createElement('td'); tdEst.innerText = getVal(row, 'estado_bordado') || ''; tr.appendChild(tdEst);
+                // estado_bordado -> select editable (X PROG / PROG)
+                const tdEst = document.createElement('td');
+                const selEst = document.createElement('select');
+                selEst.className = 'table-select';
+                selEst.innerHTML = `<option value="X PROG" ${estadoBNorm === 'X PROG' ? 'selected' : ''}>X PROG</option><option value="PROG" ${estadoBNorm.toUpperCase().indexOf('PROG')!==-1 && estadoBNorm.toUpperCase()!=='X PROG' ? 'selected' : ''}>PROG</option>`;
+                selEst.onchange = function(){ updateRow(i, 'estado_bordado', this.value, this); setTimeout(()=>{ renderArtesBordado(); updateCounters(); }, 300); };
+                tdEst.appendChild(selEst);
+                tr.appendChild(tdEst);
 
                 tbody.appendChild(tr);
             }
+            // actualizar badges de subtabs
+            try { document.getElementById('artes-bordado-xprog-count').innerText = `[${formatThousands(pdsX,0)}pds]`; } catch(e){}
+            try { document.getElementById('artes-bordado-prog-count').innerText = `[${formatThousands(pdsProg,0)}pds]`; } catch(e){}
+            // actualizar badge del botón padre (suma de X PROG + PROG)
+            try { document.getElementById('artes-pds-bordado').innerText = `[${formatThousands((pdsX||0) + (pdsProg||0),0)}pds]`; } catch(e){}
         };
 
         window.renderArtesEstampado = function() {
             const tbody = document.getElementById('tbody-artes-estampado');
             if (!tbody) return; tbody.innerHTML = '';
+
+            // Recolectar índices válidos según las reglas previas
+            let pdsX = 0, pdsProg = 0;
+            const validIndices = [];
             const idxEv = findHeaderIndexCaseInsensitive('estado_enumerado');
             for (let i = 1; i < rawData.length; i++) {
                 const row = rawData[i];
@@ -3958,60 +4255,82 @@
                 const evNorm = (ev || '').toString().toUpperCase().trim();
                 if (!(evNorm === 'OK PAQUETEO' || evNorm === 'OK ENM' || evNorm === 'OK S/ENM')) continue;
 
-                // Filtrar por n.ESTAMPxpda: mostrar solo si es vacío o 1-4; excluir si indica NO LLEVA
                 const rawNest = getVal(row, 'n.ESTAMPxpda') || getVal(row, 'N.ESTAMPXPDA') || getVal(row, 'n.ESTAMP xpda') || '';
                 const nestNorm = (rawNest || '').toString().toUpperCase().trim();
                 if (nestNorm.indexOf('NO LLEVA') !== -1) continue;
                 if (nestNorm !== '' && ['1','2','3','4'].indexOf(nestNorm) === -1) continue;
 
-                const tr = document.createElement('tr');
+                let rawEstado = getVal(row, 'estado_estampado') || '';
+                let estadoNorm = (rawEstado || '').toString().trim();
+                if (estadoNorm === '') estadoNorm = 'X PROG';
+                const grupoKey = (estadoNorm.toUpperCase().indexOf('PROG') !== -1 && estadoNorm.toUpperCase() !== 'X PROG') ? 'PROG' : 'X PROG';
 
-                // F. DESPACHO (formateada)
-                const tdFDesp = document.createElement('td'); tdFDesp.className = 'date-cell';
-                tdFDesp.innerText = formatValue(getVal(row, 'F. DESPACHO') || getVal(row, 'F DESPACHO') || '', 'date');
-                tr.appendChild(tdFDesp);
+                const pdsVal = parseFloat(getVal(row, 'PDS') || getVal(row, 'PDS GIRADAS') || 0) || 0;
+                if (grupoKey === 'X PROG') pdsX += pdsVal; else pdsProg += pdsVal;
+                validIndices.push(i);
+            }
 
-                // F.ING.COST
-                const tdFCost = document.createElement('td'); tdFCost.className = 'date-cell';
-                tdFCost.innerText = formatValue(getVal(row, 'F.ING.COST') || getVal(row, 'F ING COST') || '', 'date');
-                tr.appendChild(tdFCost);
+            // ordenar por OP-PTDA para mantener consistencia visual
+            let sorted = validIndices;
+            try { sorted = sortBloqueoData(sorted); } catch (e) { /* ignore */ }
 
-                // CLIENTE (normalizado)
-                const tdCliente = document.createElement('td'); tdCliente.innerText = normalizeClientForTransfer(getVal(row, 'CLIENTE') || ''); tr.appendChild(tdCliente);
+            // Renderizar lista plana según sub-tab activo (no headers)
+            let lastOpPtda = null;
+            let currentGroupClass = 'a';
+            sorted.forEach(i => {
+                const row = rawData[i];
+                let rawEstado = getVal(row, 'estado_estampado') || '';
+                let estadoNorm = (rawEstado || '').toString().trim();
+                if (estadoNorm === '') estadoNorm = 'X PROG';
+                const grupoKey = (estadoNorm.toUpperCase().indexOf('PROG') !== -1 && estadoNorm.toUpperCase() !== 'X PROG') ? 'PROG' : 'X PROG';
 
-                // OC
-                const tdOC = document.createElement('td');
-                let ocVal = getVal(row, 'OC') || '';
-                if ((!ocVal || String(ocVal).trim() === '')) {
-                    const opVal = getVal(row, 'OP') || getVal(row, 'OP TELA') || getVal(row, 'OP-PTDA') || '';
-                    const corteVal = getVal(row, 'CORTE') || getVal(row, 'PARTIDA') || '';
-                    if (opVal && corteVal) ocVal = `${String(opVal).trim()}-${String(corteVal).trim()}`;
+                if (grupoKey !== window.currentArtesEstampadoFilter) return; // mostrar solo el sub-tab activo
+
+                const opTela = String(getVal(row, 'OP TELA') || '').trim();
+                const partida = String(getVal(row, 'PARTIDA') || '').trim();
+                const currentOpPtda = `${opTela}-${partida}`;
+                if (lastOpPtda !== null && currentOpPtda !== lastOpPtda) {
+                    currentGroupClass = (currentGroupClass === 'a') ? 'b' : 'a';
                 }
-                tdOC.innerText = ocVal; tr.appendChild(tdOC);
+                lastOpPtda = currentOpPtda;
 
+                const tr = document.createElement('tr');
+                tr.className = `group-${currentGroupClass}`;
+
+                // F. DESPACHO
+                const tdFDesp = document.createElement('td'); tdFDesp.className = 'date-cell'; tdFDesp.innerText = formatValue(getVal(row, 'F. DESPACHO') || getVal(row, 'F DESPACHO') || '', 'date'); tr.appendChild(tdFDesp);
+                // F.ING.COST
+                const tdFCost = document.createElement('td'); tdFCost.className = 'date-cell'; tdFCost.innerText = formatValue(getVal(row, 'F.ING.COST') || getVal(row, 'F ING COST') || '', 'date'); tr.appendChild(tdFCost);
+                // CLIENTE
+                const tdCliente = document.createElement('td'); tdCliente.innerText = normalizeClientForTransfer(getVal(row, 'CLIENTE') || ''); tr.appendChild(tdCliente);
+                // OC
+                const tdOC = document.createElement('td'); let ocVal = getVal(row, 'OC') || ''; if ((!ocVal || String(ocVal).trim() === '')) { const opVal = getVal(row, 'OP') || getVal(row, 'OP TELA') || getVal(row, 'OP-PTDA') || ''; const corteVal = getVal(row, 'CORTE') || getVal(row, 'PARTIDA') || ''; if (opVal && corteVal) ocVal = `${String(opVal).trim()}-${String(corteVal).trim()}`; } tdOC.innerText = ocVal; tr.appendChild(tdOC);
                 // COLOR
                 const tdColor = document.createElement('td'); tdColor.innerText = abbreviateHeather(getVal(row, 'COLOR') || ''); tr.appendChild(tdColor);
-
                 // PDS
-                const tdPds = document.createElement('td'); tdPds.style.textAlign = 'center'; tdPds.innerText = getVal(row, 'PDS') || getVal(row, 'PDS GIRADAS') || ''; tr.appendChild(tdPds);
-
+                const tdPds = document.createElement('td'); tdPds.style.textAlign = 'center'; tdPds.innerText = formatThousands(parseFloat(getVal(row, 'PDS') || getVal(row, 'PDS GIRADAS') || 0) || 0, 0); tr.appendChild(tdPds);
                 // PRENDA
                 const tdPrenda = document.createElement('td'); tdPrenda.innerText = getVal(row, 'PRENDA') || ''; tr.appendChild(tdPrenda);
-
                 // TIPO CERT.
                 const tdTipo = document.createElement('td'); tdTipo.innerText = getVal(row, 'TIPO CERT.') || getVal(row, 'TIPO CERTIFICADO') || ''; tr.appendChild(tdTipo);
+                // n.ESTAMPxpda
+                const tdNest = document.createElement('td'); const valNest = getVal(row, 'n.ESTAMPxpda') || getVal(row, 'N.ESTAMPXPDA') || getVal(row, 'n.ESTAMP xpda') || ''; tdNest.innerText = valNest; tr.appendChild(tdNest);
 
-                // n.ESTAMPxpda (nuevo)
-                const tdNest = document.createElement('td');
-                const valNest = getVal(row, 'n.ESTAMPxpda') || getVal(row, 'N.ESTAMPXPDA') || getVal(row, 'n.ESTAMP xpda') || '';
-                tdNest.innerText = valNest;
-                tr.appendChild(tdNest);
-
-                // estado_estampado
-                const tdEst = document.createElement('td'); tdEst.innerText = getVal(row, 'estado_estampado') || ''; tr.appendChild(tdEst);
+                // estado_estampado -> select editable (X PROG / PROG)
+                const tdEst = document.createElement('td');
+                const selEst = document.createElement('select'); selEst.className = 'table-select';
+                selEst.innerHTML = `<option value="X PROG" ${estadoNorm === 'X PROG' ? 'selected' : ''}>X PROG</option><option value="PROG" ${estadoNorm.toUpperCase().indexOf('PROG')!==-1 && estadoNorm.toUpperCase()!=='X PROG' ? 'selected' : ''}>PROG</option>`;
+                selEst.onchange = function(){ updateRow(i, 'estado_estampado', this.value, this); setTimeout(()=>{ renderArtesEstampado(); updateCounters(); }, 300); };
+                tdEst.appendChild(selEst); tr.appendChild(tdEst);
 
                 tbody.appendChild(tr);
-            }
+            });
+
+            // actualizar badges de subtabs Estampado
+            try { document.getElementById('artes-estampado-xprog-count').innerText = `[${formatThousands(pdsX||0,0)}pds]`; } catch(e){}
+            try { document.getElementById('artes-estampado-prog-count').innerText = `[${formatThousands(pdsProg||0,0)}pds]`; } catch(e){}
+            // actualizar badge del botón padre (suma de X PROG + PROG)
+            try { document.getElementById('artes-pds-estampado').innerText = `[${formatThousands((pdsX||0) + (pdsProg||0),0)}pds]`; } catch(e){}
         };
 
         window.renderArtesAsignar = function() {
@@ -4069,69 +4388,78 @@
             }
 
             Array.from(grupo.values()).sort((a,b)=> (a.cliente||'').localeCompare(b.cliente) || (a.estilo||'').localeCompare(b.estilo)).forEach(g => {
+                // calcular representativos para n.BDxpda y n.ESTAMPxpda
+                function calcularRepresentativo(colName) {
+                    let idx = getColIndex(colName);
+                    if (idx === -1) {
+                        for (const k in colMap) { if (k.toString().toUpperCase().indexOf(colName.toUpperCase())!==-1) { idx = colMap[k]; break; } }
+                    }
+                    const counts = {};
+                    for (const rIdx of g.rows) {
+                        const rv = (idx !== -1 && idx !== undefined) ? rawData[rIdx][idx] : getVal(rawData[rIdx], colName);
+                        const v = (rv===undefined || rv===null) ? '' : String(rv).toUpperCase().trim();
+                        counts[v] = (counts[v]||0) + 1;
+                    }
+                    if (counts[''] && counts[''] === g.rows.length) return 'LLEVA?';
+                    if (counts['NO LLEVA']) return 'NO LLEVA';
+                    let best = ''; let bestC = 0;
+                    for (const k in counts) { if (k!=='' && counts[k] > bestC) { best = k; bestC = counts[k]; } }
+                    return best || '';
+                }
+
+                const repBD = calcularRepresentativo('n.BDxpda');
+                const repEST = calcularRepresentativo('n.ESTAMPxpda');
+
+                // aplicar filtro HayDato (CON/SIN) inspeccionando filas reales del grupo
+                // CON: mostrar grupos donde exista AL MENOS UNA fila con AMBAS columnas (BD y EST) llenas
+                // SIN: mostrar grupos donde exista AL MENOS UNA fila con BD o EST vacía
+                const uiFilterHayDato = document.getElementById('filter-artes-haydato')?.value || '';
+                let anyRowBothFilled = false;
+                let anyRowMissingBDorEST = false;
+                // localizar índices si es posible
+                let idxBD = getColIndex('n.BDxpda');
+                if (idxBD === -1) {
+                    for (const k in colMap) { if (k.toString().toUpperCase().indexOf('N.BDXPDA')!==-1) { idxBD = colMap[k]; break; } }
+                }
+                let idxEST = getColIndex('n.ESTAMPxpda');
+                if (idxEST === -1) {
+                    for (const k in colMap) { if (k.toString().toUpperCase().indexOf('N.ESTAMPXPDA')!==-1) { idxEST = colMap[k]; break; } }
+                }
+                for (const rIdx of g.rows) {
+                    const rawBD = (idxBD !== -1 && idxBD !== undefined) ? (rawData[rIdx][idxBD] || '') : (getVal(rawData[rIdx],'n.BDxpda') || '');
+                    const rawEST = (idxEST !== -1 && idxEST !== undefined) ? (rawData[rIdx][idxEST] || '') : (getVal(rawData[rIdx],'n.ESTAMPxpda') || '');
+                    const normBD = (rawBD||'').toString().trim();
+                    const normEST = (rawEST||'').toString().trim();
+                    const bdHas = (normBD !== '' && normBD.toUpperCase() !== 'LLEVA?');
+                    const estHas = (normEST !== '' && normEST.toUpperCase() !== 'LLEVA?');
+                    if (bdHas && estHas) anyRowBothFilled = true;
+                    if (!bdHas || !estHas) anyRowMissingBDorEST = true;
+                }
+
+                if (uiFilterHayDato === 'CON') {
+                    if (!anyRowBothFilled) return; // no hay ninguna fila con ambas columnas llenas -> saltar
+                } else if (uiFilterHayDato === 'SIN') {
+                    if (!anyRowMissingBDorEST) return; // ninguna fila con columna vacía -> saltar
+                }
+
                 const tr = document.createElement('tr');
                 const tdCliente = document.createElement('td'); tdCliente.textContent = normalizeClientForTransfer(g.cliente || ''); tr.appendChild(tdCliente);
                 const tdEstilo = document.createElement('td'); tdEstilo.innerHTML = `<strong>${g.estilo}</strong>`; tr.appendChild(tdEstilo);
 
                 const tdBord = document.createElement('td');
-                const selB = document.createElement('select'); selB.className='table-select';
-                // determinar valor representativo para n.BDxpda en el grupo
-                (function(){
-                    const colName = 'n.BDxpda';
-                    let valToSelect = '';
-                    let idx = getColIndex(colName);
-                    if (idx === -1) {
-                        for (const k in colMap) { if (k.toString().toUpperCase().indexOf(colName.toUpperCase())!==-1) { idx = colMap[k]; break; } }
-                    }
-                    const counts = {};
-                    for (const rIdx of g.rows) {
-                        const rv = (idx !== -1 && idx !== undefined) ? rawData[rIdx][idx] : getVal(rawData[rIdx], colName);
-                        const v = (rv===undefined || rv===null) ? '' : String(rv).toUpperCase().trim();
-                        counts[v] = (counts[v]||0) + 1;
-                    }
-                    // elegir NO LLEVA si presente, sino el más frecuente
-                    if (counts['NO LLEVA']) valToSelect = 'NO LLEVA';
-                    else {
-                        let best = ''; let bestC = 0;
-                        for (const k in counts) { if (k!=='' && counts[k] > bestC) { best = k; bestC = counts[k]; } }
-                        valToSelect = best || '';
-                    }
-                    selB.innerHTML = `<option value="NO LLEVA">NO LLEVA</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option>`;
-                    if (valToSelect) {
-                        try { selB.value = valToSelect; } catch(e) {}
-                    }
-                    selB.onchange = function(){ updateClienteEstiloArtes(g.cliente, g.estilo, this.value, 'n.BDxpda', this); };
-                })();
+                const selB = document.createElement('select'); selB.className='table-select sel-nbd-artes';
+                selB.setAttribute('data-cliente', g.cliente); selB.setAttribute('data-estilo', g.estilo);
+                selB.innerHTML = `<option value="LLEVA?">LLEVA?</option><option value="NO LLEVA">NO LLEVA</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option>`;
+                try { if (repBD !== '') selB.value = repBD; else selB.value = 'LLEVA?'; } catch(e) {}
+                selB.onchange = function(){ handleNBDChange(this); };
                 tdBord.appendChild(selB); tr.appendChild(tdBord);
 
                 const tdEst = document.createElement('td');
-                const selE = document.createElement('select'); selE.className='table-select';
-                // determinar valor representativo para n.ESTAMPxpda en el grupo
-                (function(){
-                    const colName = 'n.ESTAMPxpda';
-                    let valToSelect = '';
-                    let idx = getColIndex(colName);
-                    if (idx === -1) {
-                        for (const k in colMap) { if (k.toString().toUpperCase().indexOf(colName.toUpperCase())!==-1) { idx = colMap[k]; break; } }
-                    }
-                    const counts = {};
-                    for (const rIdx of g.rows) {
-                        const rv = (idx !== -1 && idx !== undefined) ? rawData[rIdx][idx] : getVal(rawData[rIdx], colName);
-                        const v = (rv===undefined || rv===null) ? '' : String(rv).toUpperCase().trim();
-                        counts[v] = (counts[v]||0) + 1;
-                    }
-                    if (counts['NO LLEVA']) valToSelect = 'NO LLEVA';
-                    else {
-                        let best = ''; let bestC = 0;
-                        for (const k in counts) { if (k!=='' && counts[k] > bestC) { best = k; bestC = counts[k]; } }
-                        valToSelect = best || '';
-                    }
-                    selE.innerHTML = `<option value="NO LLEVA">NO LLEVA</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option>`;
-                    if (valToSelect) {
-                        try { selE.value = valToSelect; } catch(e) {}
-                    }
-                    selE.onchange = function(){ updateClienteEstiloArtes(g.cliente, g.estilo, this.value, 'n.ESTAMPxpda', this); };
-                })();
+                const selE = document.createElement('select'); selE.className='table-select sel-nest-artes';
+                selE.setAttribute('data-cliente', g.cliente); selE.setAttribute('data-estilo', g.estilo);
+                selE.innerHTML = `<option value="LLEVA?">LLEVA?</option><option value="NO LLEVA">NO LLEVA</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option>`;
+                try { if (repEST !== '') selE.value = repEST; else selE.value = 'LLEVA?'; } catch(e) {}
+                selE.onchange = function(){ handleNESTChange(this); };
                 tdEst.appendChild(selE); tr.appendChild(tdEst);
 
                 tbody.appendChild(tr);
@@ -4139,7 +4467,10 @@
         };
 
         window.updateClienteEstiloArtes = function(cliente, estilo, value, colName, selectElement) {
-            if (!cliente || !estilo) return;
+            if (!cliente) return;
+            // Si el estilo no provisto y no está en modo 'para todo', no hacemos nada
+            const paraTodo = !!document.getElementById('chk-artes-para-todo') && document.getElementById('chk-artes-para-todo').checked;
+            if (!estilo && !paraTodo) return;
             // intentar encontrar índice de columna por nombre en colMap
             let idx = getColIndex(colName);
             if (idx === -1) {
@@ -4147,11 +4478,12 @@
                 for (const k in colMap) { if (k.toString().toUpperCase().indexOf(colName.toUpperCase())!==-1) { idx = colMap[k]; break; } }
             }
             if (idx === -1 || idx === undefined) {
-                // no se encontró columna; solo actualizar localmente
+                // no se encontró columna; solo actualizar localmente (comparar clientes normalizados)
+                const clienteNorm = normalizeClientForTransfer(cliente || '');
                 for (let i=1;i<rawData.length;i++){
-                    const rCliente = getVal(rawData[i],'CLIENTE')||'';
-                    const rEstilo = getVal(rawData[i],'ESTILO')||'';
-                    if (rCliente===cliente && rEstilo===estilo) {
+                    const rCliente = normalizeClientForTransfer(getVal(rawData[i],'CLIENTE')||'');
+                    const rEstilo = (getVal(rawData[i],'ESTILO')||'').toString().trim();
+                    if (rCliente===clienteNorm && (paraTodo || rEstilo===estilo)) {
                         rawData[i][idx] = value;
                     }
                 }
@@ -4159,28 +4491,61 @@
                 return;
             }
 
-            // Recolectar filas a actualizar
+            // Recolectar filas a actualizar.
+            // Si 'Para todo' está activo -> aplicar a TODO lo filtrado por los selects actuales (cliente/estilo/haydato).
+            // Si no -> aplicar a todas las filas del mismo estilo para el cliente.
             const rowsToUpdate = [];
+            const clienteNorm = normalizeClientForTransfer(cliente || '');
+            const uiFilterCliente = document.getElementById('filter-artes-cliente')?.value || '';
+            const uiFilterEstilo = document.getElementById('filter-artes-estilo')?.value || '';
+            const uiFilterHayDato = document.getElementById('filter-artes-haydato')?.value || '';
             for (let i=1;i<rawData.length;i++){
-                const rCliente = getVal(rawData[i],'CLIENTE')||'';
-                const rEstilo = getVal(rawData[i],'ESTILO')||'';
-                if (rCliente===cliente && rEstilo===estilo) rowsToUpdate.push(i);
+                const rCliente = normalizeClientForTransfer(getVal(rawData[i],'CLIENTE')||'');
+                const rEstilo = (getVal(rawData[i],'ESTILO')||'').toString().trim();
+                if (rCliente !== clienteNorm) continue;
+
+                if (paraTodo) {
+                    // respetar filtros UI: si hay filtro por estilo, aplicarlo; si hay filtro haydato, evaluar la columna objetivo
+                    if (uiFilterEstilo && rEstilo !== uiFilterEstilo) continue;
+
+                    if (uiFilterHayDato === 'CON' || uiFilterHayDato === 'SIN') {
+                        // verificar valor actual de la columna objetivo en esta fila
+                        let idxCheck = getColIndex(colName);
+                        if (idxCheck === -1) {
+                            for (const k in colMap) { if (k.toString().toUpperCase().indexOf(colName.toUpperCase())!==-1) { idxCheck = colMap[k]; break; } }
+                        }
+                        const rawVal = (idxCheck !== -1 && idxCheck !== undefined) ? (rawData[i][idxCheck] || '') : (getVal(rawData[i], colName) || '');
+                        const rawNorm = (rawVal||'').toString().trim();
+                        const hasDato = (rawNorm !== '' && rawNorm.toUpperCase().indexOf('NO LLEVA') === -1);
+                        if (uiFilterHayDato === 'CON' && !hasDato) continue;
+                        if (uiFilterHayDato === 'SIN' && hasDato) continue;
+                    }
+
+                    rowsToUpdate.push(i);
+                } else {
+                    // aplicar únicamente a filas con el mismo estilo
+                    if (rEstilo === estilo) rowsToUpdate.push(i);
+                }
             }
             if (rowsToUpdate.length===0) { alert('No se encontraron filas para actualizar'); return; }
 
             if (selectElement) selectElement.disabled = true;
-            let completed=0; const total=rowsToUpdate.length;
-            rowsToUpdate.forEach((rowIndex,i)=>{
-                setTimeout(()=>{
-                    // actualizar localmente
-                    rawData[rowIndex][idx]=value;
-                    fetch(WEB_APP_URL, {
-                        method: 'POST', mode: 'no-cors', headers: {'Content-Type':'application/json'},
-                        body: JSON.stringify({ action:'update', row: rowIndex, colName: colName, value: value })
-                    }).then(()=>{
-                        completed++; if (completed===total) { if (selectElement) selectElement.disabled=false; updateCounters(); renderArtes(); }
-                    }).catch(err=>{ console.error('Err',err); completed++; if (completed===total && selectElement) selectElement.disabled=false; });
-                }, i*100);
+            // Actualizar localmente primero para respuesta inmediata
+            rowsToUpdate.forEach(rowIndex => { rawData[rowIndex][idx] = value; });
+            // Enviar todas las peticiones en paralelo (más dinámico). Si el backend acepta batch, mejorar posteriormente.
+            const promises = rowsToUpdate.map(rowIndex => {
+                return fetch(WEB_APP_URL, {
+                    method: 'POST', mode: 'no-cors', headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify({ action:'update', row: rowIndex, colName: colName, value: value })
+                }).catch(err => { console.error('Err saving row', rowIndex, err); });
+            });
+            Promise.all(promises).then(()=>{
+                if (selectElement) selectElement.disabled = false;
+                updateCounters();
+                renderArtes();
+            }).catch(()=>{
+                if (selectElement) selectElement.disabled = false;
+                renderArtes();
             });
         };
 
@@ -4938,6 +5303,337 @@
                 alert('Error al guardar los equipos.');
             }
         };
+    </script>
+
+    <script>
+        (function(){
+            const sampleData = [
+                {label: 'Bloqueo', pds: 28426, cls: 'c-bloqueo'},
+                {label: 'Lavanderia', pds: 1200, cls: 'c-lavanderia'},
+                {label: 'Corte Pzas', pds: 8000, cls: 'c-corte-pzas'},
+                {label: 'Corte Bloques', pds: 5000, cls: 'c-corte-bloques'},
+                {label: 'Enumerado', pds: 3000, cls: 'c-enumerado'},
+                {label: 'Transfer', pds: 2000, cls: 'c-transfer'},
+                {label: 'Bordado', pds: 1500, cls: 'c-bordado'},
+                {label: 'Estampado', pds: 800, cls: 'c-estampado'},
+                {label: 'Habilitado', pds: 600, cls: 'c-habilitado'}
+            ];
+
+            window.openStockFunnelModal = function(data) {
+                const modal = document.getElementById('modal-stock-funnel');
+                modal.classList.add('active');
+                // Compute data (or use provided) and render. Also log diagnostic info
+                const computed = data || computeStockByStage();
+                try {
+                    console.log('DEBUG: computeStockByStage result:', computed);
+                    // También obtener badges de Bloqueo (Por Programar + Programado) para comparar
+                    function parseBadgePds(elId) {
+                        try {
+                            const el = document.getElementById(elId);
+                            if (!el) return 0;
+                            const txt = (el.innerText||el.textContent||'').toString();
+                            const m = txt.match(/([0-9,]+)\s*pds/);
+                            return m ? parseInt(m[1].replace(/,/g,''),10) : 0;
+                        } catch(e){ return 0; }
+                    }
+                    const px = parseBadgePds('kg-xprog');
+                    const pp = parseBadgePds('kg-prog');
+                    const sumBadges = px + pp;
+                    console.log('DEBUG: badge Por Programar:', px, 'Programado:', pp, 'suma:', sumBadges);
+                    const bloqueoModal = (computed.find(i=>i.label && i.label.toLowerCase().indexOf('bloqueo')!==-1) || {pds:0}).pds;
+                    console.log('DEBUG: bloqueoModal pds:', bloqueoModal);
+                } catch(e) { console.error('DEBUG funnel logging error', e); }
+                renderFunnelChart(computed);
+            };
+
+            function computeStockByStage(){
+                // devuelve array [{label, pds, cls}]
+                const stages = {
+                    'Bloqueo': 0,
+                    'Lavanderia': 0,
+                    'Corte Pzas': 0,
+                    'Corte Bloques': 0,
+                    'Enumerado': 0,
+                    'Transfer': 0,
+                    'Bordado': 0,
+                    'Estampado': 0,
+                    'Habilitado': 0
+                };
+                if (!window.rawData || !window.colMap) return sampleData;
+                for (let i = 1; i < rawData.length; i++) {
+                    const row = rawData[i];
+                    const pds = parseFloat(getVal(row, 'PDS') || getVal(row, 'PDS GIRADAS') || 0) || 0;
+                    if (!pds || pds <= 0) continue;
+
+                    const hab = String(getVal(row, 'estado_habilitado') || '').toUpperCase();
+                    const enu = String(getVal(row, 'estado_enumerado') || '').toUpperCase();
+                    const bord = String(getVal(row, 'estado_bordado') || '').toUpperCase();
+                    const estamp = String(getVal(row, 'estado_estampado') || '').toUpperCase();
+                    const transf = String(getVal(row, 'estado_transfer') || getVal(row,'estado_transferencia') || '').toUpperCase();
+                    const statusCorte = String(getVal(row, 'STATUS_CORTE') || getVal(row,'STATUS') || getVal(row,'status') || getVal(row,'estado_corte') || '').toUpperCase();
+                    const estadoBloques = String(getVal(row, 'estado_bloques') || getVal(row,'ESTADO_BLOQUES') || '').toUpperCase();
+                    const ruta = String(getVal(row, 'RUTA TELA') || '').toUpperCase();
+
+                    if (hab && hab.indexOf('OK') !== -1) { stages['Habilitado'] += pds; continue; }
+                    if (enu && enu.indexOf('OK') !== -1) { stages['Enumerado'] += pds; continue; }
+                    if (bord && bord !== '' && bord.indexOf('NO LLEVA') === -1 && bord.indexOf('OK') === -1) { stages['Bordado'] += pds; continue; }
+                    if (estamp && estamp !== '' && estamp.indexOf('NO LLEVA') === -1 && estamp.indexOf('OK') === -1) { stages['Estampado'] += pds; continue; }
+                    if (transf && transf !== '' && transf.indexOf('NO LLEVA') === -1 && transf.indexOf('OK') === -1) { stages['Transfer'] += pds; continue; }
+                    if (statusCorte && statusCorte.indexOf('OK') !== -1) {
+                        if (estadoBloques && estadoBloques !== '' && estadoBloques.indexOf('NO') === -1) stages['Corte Bloques'] += pds;
+                        else stages['Corte Pzas'] += pds;
+                        continue;
+                    }
+                    if (ruta === 'LAVADA' && String(getVal(row,'estado_bloqueo')||'').toUpperCase() === 'OK') { stages['Lavanderia'] += pds; continue; }
+
+                    // Por defecto se considera en Bloqueo
+                    stages['Bloqueo'] += pds;
+                }
+
+                // Ajustar totales para que correspondan a la suma explícita de subtabs
+                // (por ejemplo Bloqueo = Por Programar + Programado). Calculamos
+                // los subtotales usando las mismas reglas que los badges y luego
+                // sobrescribimos los valores en 'stages' para mayor precisión.
+                try {
+                    let b_pdsX = 0, b_pdsP = 0;
+                    let l_pdsEnLav = 0;
+                    let transfer_total = 0;
+                    let bord_total = 0;
+                    let estamp_total = 0;
+
+                    for (let i = 1; i < rawData.length; i++) {
+                        const row = rawData[i];
+                        const pds = parseFloat(getVal(row, 'PDS') || getVal(row, 'PDS GIRADAS') || 0) || 0;
+                        if (!pds || pds <= 0) continue;
+
+                        const rutaVal = String(getVal(row, 'RUTA TELA') || getVal(row,'RUTA') || '').toUpperCase();
+                        const estadoBloq = String(getVal(row, 'estado_bloqueo') || '').toUpperCase() || 'X PROG';
+                        const estadoLav = String(getVal(row, 'estado_lavada') || '').toUpperCase() || 'EN LAV';
+
+                        // Bloqueo subtabs: se cuentan sólo para filas cuya ruta sea LAVADA
+                        if (rutaVal === 'LAVADA') {
+                            if (estadoBloq === 'X PROG' || estadoBloq === '') b_pdsX += pds;
+                            else if (estadoBloq.indexOf('PROG') !== -1) b_pdsP += pds;
+                            else if (estadoBloq === 'OK') {
+                                // Si está OK pero en ruta LAVADA, no contarlo como bloqueo
+                            }
+                        }
+
+                        // Lavandería: filas con estado_bloqueo = OK y estado_lavada = EN LAV
+                        if ((String(getVal(row, 'estado_bloqueo') || '').toUpperCase() === 'OK') && (estadoLav === 'EN LAV')) {
+                            l_pdsEnLav += pds;
+                        }
+
+                        // Transfer: considerar filas enumeradas OK y que no sean NO LLEVA
+                        try {
+                            const ev = String(getVal(row, 'estado_enumerado') || '').toUpperCase();
+                            if (ev.indexOf('OK') !== -1) {
+                                let rawNTrans = getVal(row, 'n.transfxpda');
+                                if (!rawNTrans || rawNTrans === undefined || rawNTrans === null || String(rawNTrans).trim() === '') {
+                                    const clienteChk = (getVal(row, 'CLIENTE') || '').toString().trim();
+                                    const estiloChk = (getVal(row, 'ESTILO') || '').toString().trim();
+                                    const avgChk = avgTransfByClienteEstilo(clienteChk, estiloChk);
+                                    rawNTrans = (avgChk !== null) ? avgChk : '';
+                                }
+                                const nTransNorm = (rawNTrans || '').toString().toUpperCase().trim();
+                                if (nTransNorm.indexOf('NO LLEVA') === -1) transfer_total += pds;
+                            }
+                        } catch (e) {}
+
+                        // Bordado / Estampado: sumar pds según criterios usados en badges
+                        try {
+                            const ev = String(getVal(row, 'estado_enumerado') || '').toUpperCase();
+                            if (ev.indexOf('OK') !== -1) {
+                                const rawNbd = (getVal(row, 'n.BDxpda') || getVal(row, 'N.BDXPDA') || '').toString().toUpperCase();
+                                if (rawNbd.indexOf('NO LLEVA') === -1) {
+                                    const estadoB = (getVal(row, 'estado_bordado') || '').toString().toUpperCase() || 'X PROG';
+                                    if (!(estadoB.indexOf('OK') !== -1)) bord_total += pds;
+                                }
+
+                                const rawNest = (getVal(row, 'n.ESTAMPxpda') || getVal(row, 'N.ESTAMPXPDA') || '').toString().toUpperCase();
+                                if (rawNest.indexOf('NO LLEVA') === -1) {
+                                    const estadoE = (getVal(row, 'estado_estampado') || '').toString().toUpperCase() || 'X PROG';
+                                    if (!(estadoE.indexOf('OK') !== -1)) estamp_total += pds;
+                                }
+                            }
+                        } catch (e) {}
+                    }
+
+                    // Sobrescribir los valores calculados inicialmente para reflejar la suma de subtabs
+                    // Preferir los valores que ya están mostrados en los badges (si existen en el DOM),
+                    // ya que esos badges son la fuente visible de subtotales.
+                    function _parseBadge(id){
+                        try {
+                            const el = document.getElementById(id);
+                            if (!el) return null;
+                            const txt = (el.innerText || el.textContent || '').toString();
+                            const m = txt.match(/([0-9,]+)\s*pds/);
+                            return m ? parseInt(m[1].replace(/,/g, ''), 10) : null;
+                        } catch(e) { return null; }
+                    }
+                    const pxBadge = _parseBadge('kg-xprog');
+                    const ppBadge = _parseBadge('kg-prog');
+                    if ((pxBadge !== null && pxBadge > 0) || (ppBadge !== null && ppBadge > 0)) {
+                        stages['Bloqueo'] = Math.round((pxBadge || 0) + (ppBadge || 0));
+                    } else {
+                        stages['Bloqueo'] = Math.round((b_pdsX || 0) + (b_pdsP || 0));
+                    }
+                    stages['Lavanderia'] = Math.round(l_pdsEnLav || stages['Lavanderia']);
+                    stages['Transfer'] = Math.round(transfer_total || stages['Transfer']);
+                    stages['Bordado'] = Math.round(bord_total || stages['Bordado']);
+                    stages['Estampado'] = Math.round(estamp_total || stages['Estampado']);
+                } catch (e) {
+                    // Si hay error en la recomputación, dejar valores originales
+                    console.error('Error recomputing subtotals for funnel modal', e);
+                }
+
+                // convertir a array con classes
+                const mapCls = {
+                    'Bloqueo': 'c-bloqueo', 'Lavanderia': 'c-lavanderia', 'Corte Pzas': 'c-corte-pzas',
+                    'Corte Bloques': 'c-corte-bloques', 'Enumerado': 'c-enumerado', 'Transfer': 'c-transfer',
+                    'Bordado': 'c-bordado', 'Estampado': 'c-estampado', 'Habilitado': 'c-habilitado'
+                };
+                // Preferir valores visibles en los badges cuando existan, según las reglas solicitadas
+                function _parseBadge(id){
+                    try {
+                        const el = document.getElementById(id);
+                        if (!el) return null;
+                        const txt = (el.innerText || el.textContent || '').toString();
+                        const m = txt.match(/([0-9,]+)\s*pds/);
+                        return m ? parseInt(m[1].replace(/,/g,''), 10) : null;
+                    } catch(e){ return null; }
+                }
+
+                // 1) Bloqueo -> suma de Por Programar + Programado (badges kg-xprog + kg-prog)
+                try {
+                    const bx = _parseBadge('kg-xprog');
+                    const bp = _parseBadge('kg-prog');
+                    if (bx !== null || bp !== null) stages['Bloqueo'] = (bx||0) + (bp||0);
+                } catch(e){}
+
+                // 2) Lavanderia -> badge `kg-enlav` (Por Lavar)
+                try { const lav = _parseBadge('kg-enlav'); if (lav !== null) stages['Lavanderia'] = lav; } catch(e){}
+
+                // 3) Corte Pzas -> suma de corte-pds-xprog + corte-pds-1t + corte-pds-2t + corte-pds-3t
+                try {
+                    const cx = _parseBadge('corte-pds-xprog') || 0;
+                    const c1 = _parseBadge('corte-pds-1t') || 0;
+                    const c2 = _parseBadge('corte-pds-2t') || 0;
+                    const c3 = _parseBadge('corte-pds-3t') || 0;
+                    const cortePzasSum = cx + c1 + c2 + c3;
+                    if (cortePzasSum > 0) stages['Corte Pzas'] = cortePzasSum;
+                } catch(e){}
+
+                // 4) Corte Bloques -> usar suma de Por Programar + Programado asociada a bloques (aprox: corte-pds-xprog + corte-pds-1t)
+                try {
+                    const cbx = _parseBadge('corte-pds-xprog') || 0;
+                    const cbp = _parseBadge('corte-pds-1t') || 0;
+                    const corteBloquesSum = cbx + cbp;
+                    if (corteBloquesSum > 0) stages['Corte Bloques'] = corteBloquesSum;
+                } catch(e){}
+
+                // 5) Enumerado -> badge `enumerado-pds-por`
+                try { const enu = _parseBadge('enumerado-pds-por'); if (enu !== null) stages['Enumerado'] = enu; } catch(e){}
+
+                // 6) Transfer -> suma badges transfer-pds-xprog + transfer-pds-prog
+                try {
+                    const tx = _parseBadge('transfer-pds-xprog') || 0;
+                    const tp = _parseBadge('transfer-pds-prog') || 0;
+                    if ((tx+tp) > 0) stages['Transfer'] = tx+tp;
+                } catch(e){}
+
+                // 7) Bordado -> badge `artes-pds-bordado`
+                try { const bd = _parseBadge('artes-pds-bordado'); if (bd !== null) stages['Bordado'] = bd; } catch(e){}
+
+                // 8) Estampado -> badge `artes-pds-estampado`
+                try { const es = _parseBadge('artes-pds-estampado'); if (es !== null) stages['Estampado'] = es; } catch(e){}
+
+                // 9) Habilitado -> mantener suma de la columna PDS calculada anteriormente
+
+                const result = Object.keys(stages).map(k => ({ label: k, pds: Math.round(stages[k]||0), cls: mapCls[k] }));
+                return result;
+            }
+
+            // Exponer función de cálculo y un helper de debug para la consola
+            try {
+                window.computeStockByStage = computeStockByStage;
+                window.debugStockTotals = function() {
+                    try {
+                        const computed = computeStockByStage();
+                        console.log('DEBUG_FUNC: computeStockByStage ->', computed);
+                        function parseBadge(elId){
+                            const el = document.getElementById(elId);
+                            if (!el) return 0;
+                            const txt = (el.innerText||el.textContent||'').toString();
+                            const m = txt.match(/([0-9,]+)\s*pds/);
+                            return m ? parseInt(m[1].replace(/,/g,''),10) : 0;
+                        }
+                        const px = parseBadge('kg-xprog');
+                        const pp = parseBadge('kg-prog');
+                        const sumBadges = px + pp;
+                        console.log('DEBUG_FUNC: badge Por Programar (kg-xprog)=', px, 'Programado (kg-prog)=', pp, 'suma=', sumBadges);
+                        const bloqueoModal = (computed.find(i=>i.label && i.label.toLowerCase().indexOf('bloqueo')!==-1) || {pds:0}).pds;
+                        console.log('DEBUG_FUNC: bloqueoModal pds=', bloqueoModal);
+                        return { computed, badges: { px, pp, sumBadges }, bloqueoModal };
+                    } catch(e){ console.error('debugStockTotals error', e); throw e; }
+                };
+            } catch(e) { console.error('Error exposing debug functions', e); }
+
+            window.closeStockFunnelModal = function() {
+                const modal = document.getElementById('modal-stock-funnel');
+                modal.classList.remove('active');
+            };
+
+            function renderFunnelChart(data){
+                const container = document.getElementById('funnel-chart');
+                if(!container) return;
+                // Mostrar en el orden específico solicitado (no por tamaño)
+                const source = (data || sampleData).slice();
+                const byLabel = {};
+                source.forEach(s => { byLabel[String(s.label).trim()] = s; });
+                const order = ['Bloqueo','Lavanderia','Corte Pzas','Corte Bloques','Enumerado','Transfer','Bordado','Estampado','Habilitado'];
+                const items = order.map(name => byLabel[name] ? byLabel[name] : ({ label: name, pds: 0, cls: '' }));
+                const max = Math.max(...items.map(i=>i.pds), 1);
+                container.innerHTML = '';
+                items.forEach(item => {
+                    const pct = Math.max(3, (item.pds / max) * 100);
+
+                    const row = document.createElement('div');
+                    row.className = 'funnel-block';
+
+                    const label = document.createElement('div');
+                    label.className = 'funnel-label';
+                    label.textContent = item.label;
+
+                    const barWrap = document.createElement('div');
+                    barWrap.className = 'funnel-bar';
+
+                    const fill = document.createElement('div');
+                    fill.className = 'bar-fill ' + (item.cls || 'c-corte-pzas');
+                    fill.style.width = pct + '%';
+                    // Do not place the numeric inside the fill; it's shown to the right
+                    barWrap.appendChild(fill);
+
+                    const valueEl = document.createElement('div');
+                    valueEl.className = 'funnel-value';
+                    valueEl.textContent = numberWithCommas(item.pds) + ' pds';
+
+                    row.appendChild(label);
+                    row.appendChild(barWrap);
+                    row.appendChild(valueEl);
+
+                    container.appendChild(row);
+                });
+            }
+
+            function numberWithCommas(x){ return String(x).replace(/\B(?=(\d{3})+(?!\d))/g, ","); }
+            function escapeHtml(s){ return String(s).replace(/[&<>\"]/g, function(t){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[t]; }); }
+
+            document.addEventListener('keydown', function(e){ if(e.key === 'Escape') closeStockFunnelModal(); });
+
+            // Expose render function for later updates
+            window.renderStockFunnel = renderFunnelChart;
+        })();
     </script>
 
     </body>
