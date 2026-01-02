@@ -117,6 +117,12 @@
         .filter-item input[type="checkbox"]:checked { background: var(--primary); }
         .filter-item input[type="checkbox"]:checked::before { transform: translateX(16px); }
 
+        /* Reducir tamaño del switch y etiqueta 'Normal' en 40% */
+        .filter-item input#flt-normal { width: 22px; height: 12px; }
+        .filter-item input#flt-normal::before { top: 2px; left: 2px; width: 8px; height: 8px; }
+        .filter-item input#flt-normal:checked::before { transform: translateX(9px); }
+        .filter-item input#flt-normal + span { font-size: 7.2px; }
+
         .sub-tab {
             border: none; background: none; padding: 5px 12px; border-radius: 5px;
             font-size: 15.5px; 
@@ -196,7 +202,7 @@
 
         /* --- ESTILOS DE CELDA --- */
         .op-cell { font-weight: 600; color: var(--gray-800); }
-        .kg-cell { font-family: 'Courier New', monospace; font-weight: 600; font-size: 13px; }
+        .kg-cell { font-family: 'Calibri', 'Inter', sans-serif; font-weight: 600; font-size: 11px; }
         .date-cell { color: var(--gray-800); font-size: 11px; }
 
         /* --- SELECTS COMPACTOS --- */
@@ -678,7 +684,7 @@
     </div>
 
     <!-- BOTÓN FLOTANTE: Stock (embudo) -->
-    <div id="stock-funnel-button" title="Ver stock" onclick="openStockFunnelModal()" aria-label="Ver stock">
+    <div id="stock-funnel-button" title="Ver stock" onclick="window.location.href='stock.html'" aria-label="Ver stock">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M3 4h18v2H3V4zM6 10h12v2H6v-2zM10 16h4v2h-4v-2z" fill="currentColor"/>
         </svg>
@@ -1077,6 +1083,7 @@
                         <label class="filter-item"><input type="checkbox" id="flt-ac" onchange="onRouteFilterChange('AC', this.checked)"><span>AC</span></label>
                         <label class="filter-item"><input type="checkbox" id="flt-xl" onchange="onRouteFilterChange('x lavar', this.checked)"><span>x lavar</span></label>
                         <label class="filter-item"><input type="checkbox" id="flt-xb" onchange="onRouteFilterChange('x bloq', this.checked)"><span>x bloq</span></label>
+                        <label class="filter-item"><input type="checkbox" id="flt-normal" onchange="onRouteFilterChange('NORMAL', this.checked)"><span>Normal</span></label>
                     </div>
             </div>
             <div class="table-container">
@@ -1147,12 +1154,14 @@
 
     <script>
         // --- CONFIGURACIÓN ---
-        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwRVtZTv86e_3lPSojIl5krfaV2oVFQByBOVCv6Hknj6pLcBW6WPqigI3vnY1Tw4Tl3eA/exec"; 
+        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwUgkycse31yIQiVHvoEdxQiCDtiVQ5n_atqB9Ls5XxszAN2NrVO1_I-1544vesUtoMaQ/exec"; 
         const SHEET_ID = "18cQuwqerdMggAeJ8TCUKA7-gujXsA91-CRMUTNpr8aQ";
 
         let rawData = [];
         let colMap = {};
         let currentBloqueoFilter = 'X PROG';
+        // Filtro aplicado desde el encabezado de Bloqueo (campo + valor)
+        let bloqueoHeaderFilter = null; // { field: 'CLIENTE', value: 'ABC' }
         let currentLavadoFilter = 'EN LAV';
         let currentCorteFilter = 'X PROG';
         let currentCorteBloquesFilter = 'X PROG';
@@ -1344,7 +1353,8 @@
             'LV-ok': false,
             'AC': false,
             'x lavar': false,
-            'x bloq': false
+            'x bloq': false,
+            'NORMAL': false
         };
 
         function onRouteFilterChange(key, checked) {
@@ -1357,6 +1367,7 @@
         function getRouteKeyForRow(row) {
             const rutaVal = getVal(row, "RUTA TELA") || getVal(row, "RUTA") || "";
             const rutaKey = String(rutaVal || "").toUpperCase().trim();
+            if (rutaKey.indexOf('NORMAL') !== -1) return 'NORMAL';
             if (rutaKey === 'ACABADA') return 'AC';
             if (rutaKey === 'LAVADA') {
                 const estadoBloqRaw = getVal(row, "estado_bloqueo");
@@ -1382,6 +1393,8 @@
             
             // Cargar equipos de corte en segundo plano
             cargarEquiposCorteBackground();
+            // Configurar menú contextual del encabezado de Bloqueo
+            try { setupBloqueoHeaderFilterMenu(); } catch(e) { console.error('setupBloqueoHeaderFilterMenu error', e); }
         }
 
         window.loadDataCallback = function(jsonResponse) {
@@ -1830,6 +1843,48 @@
 
             validIndices = sortBloqueoData(validIndices);
 
+            // Aplicar filtro de encabezado si existe
+            try {
+                if (bloqueoHeaderFilter && bloqueoHeaderFilter.field && bloqueoHeaderFilter.value !== undefined && bloqueoHeaderFilter.value !== null && String(bloqueoHeaderFilter.value).trim() !== '') {
+                    const f = bloqueoHeaderFilter.field;
+                    const v = String(bloqueoHeaderFilter.value).toUpperCase().trim();
+                    validIndices = validIndices.filter(idx => {
+                        const r = rawData[idx] || [];
+                        try {
+                            if (f === 'F. DESPACHO') {
+                                const cell = formatValue(getVal(r, 'F. DESPACHO'), 'date') || '';
+                                return String(cell).toUpperCase().indexOf(v) !== -1;
+                            }
+                            if (f === 'F.ING.COST') {
+                                const cell = formatValue(getVal(r, 'F.ING.COST'), 'date') || '';
+                                return String(cell).toUpperCase().indexOf(v) !== -1;
+                            }
+                            if (f === 'CLIENTE') {
+                                const cell = normalizeClientName(getVal(r, 'CLIENTE')) || '';
+                                return String(cell).toUpperCase().indexOf(v) !== -1;
+                            }
+                            if (f === 'OP-PTDA') {
+                                const opTela = String(getVal(r, 'OP TELA') || '').trim();
+                                const partida = String(getVal(r, 'PARTIDA') || '').trim();
+                                const cell = (opTela + '-' + partida) || '';
+                                return String(cell).toUpperCase().indexOf(v) !== -1;
+                            }
+                            if (f === 'OC') {
+                                const op = String(getVal(r, 'OP') || '').trim();
+                                const corte = String(getVal(r, 'CORTE') || '').trim();
+                                const cell = (op + '-' + corte) || '';
+                                return String(cell).toUpperCase().indexOf(v) !== -1;
+                            }
+                            if (f === 'COLOR') {
+                                const cell = String(getVal(r, 'COLOR') || '') || '';
+                                return String(cell).toUpperCase().indexOf(v) !== -1;
+                            }
+                        } catch (e) { return false; }
+                        return false;
+                    });
+                }
+            } catch (e) { console.error('Error applying bloqueoHeaderFilter', e); }
+
             let lastOpPtda = null;
             let currentGroup = 'a'; 
 
@@ -1852,6 +1907,200 @@
             });
             
             document.getElementById('count-bloqueo').innerText = count;
+        }
+
+        // Configura menú contextual en el encabezado de la vista Bloqueo
+        function setupBloqueoHeaderFilterMenu() {
+            const view = document.getElementById('view-bloqueo');
+            if (!view) return;
+            const thead = view.querySelector('thead');
+            if (!thead) return;
+
+            // Crear contenedor de menú si no existe
+            let menu = document.getElementById('bloq-header-filter-menu');
+            if (!menu) {
+                menu = document.createElement('div');
+                menu.id = 'bloq-header-filter-menu';
+                menu.style.position = 'absolute';
+                menu.style.zIndex = 9999;
+                menu.style.background = '#fff';
+                menu.style.border = '1px solid #ccc';
+                menu.style.padding = '6px';
+                menu.style.boxShadow = '0 2px 6px rgba(0,0,0,0.15)';
+                menu.style.display = 'none';
+                document.body.appendChild(menu);
+            }
+
+            const fields = ['F. DESPACHO','F.ING.COST','CLIENTE','OP-PTDA','OC','COLOR'];
+
+            const buildMenu = () => {
+                menu.innerHTML = '';
+                const title = document.createElement('div');
+                title.style.fontWeight = '600';
+                title.style.marginBottom = '6px';
+                title.innerText = 'Filtrar por (Bloqueo)';
+                menu.appendChild(title);
+
+                // helper: obtener valores únicos de una columna (formateados para fechas)
+                const getUniqueValues = (colName, formatAsDate) => {
+                    const map = new Map(); // display -> timestamp
+                    const mesesEs = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+
+                    const parseToTimestamp = (raw) => {
+                        if (raw === undefined || raw === null || raw === '') return NaN;
+                        // number (Excel serial)
+                        if (typeof raw === 'number' && raw > 30000) {
+                            const d = new Date(Math.round((raw - 25569) * 86400 * 1000));
+                            return d.getTime();
+                        }
+                        if (typeof raw === 'string') {
+                            const s = raw.trim();
+                            // Date(yyyy,mm,dd)
+                            const m = s.match(/Date\((\d+),(\d+),(\d+)\)/);
+                            if (m) {
+                                const y = parseInt(m[1],10);
+                                const mo = parseInt(m[2],10);
+                                const day = parseInt(m[3],10);
+                                return new Date(y, mo, day).getTime();
+                            }
+                            // Formato dd/Mon/yy o dd/Mon/yyyy (Mon en español abreviado como Ene,Feb,...)
+                            const m2 = s.match(/(\d{1,2})\/([A-Za-z]{3})\/(\d{2,4})/);
+                            if (m2) {
+                                const day = parseInt(m2[1],10);
+                                const monAbbr = m2[2].slice(0,3);
+                                const yearRaw = m2[3];
+                                const monthIdx = mesesEs.findIndex(x => x.toLowerCase() === monAbbr.toLowerCase());
+                                let year = parseInt(yearRaw,10);
+                                if (yearRaw.length === 2) {
+                                    year = 2000 + year;
+                                }
+                                if (monthIdx !== -1) return new Date(year, monthIdx, day).getTime();
+                            }
+                            // Try ISO parse
+                            const tryIso = Date.parse(s);
+                            if (!isNaN(tryIso)) return tryIso;
+                        }
+                        return NaN;
+                    };
+
+                    try {
+                        for (let i = 1; i < rawData.length; i++) {
+                            const row = rawData[i];
+                            if (!row) continue;
+                            const rawVal = getVal(row, colName);
+                            const display = formatAsDate ? String(formatValue(rawVal, 'date')) : String(rawVal);
+                            if (display === 'undefined' || display === 'null' || String(display).trim() === '') continue;
+                            if (!map.has(display)) {
+                                const ts = parseToTimestamp(rawVal);
+                                map.set(display, isNaN(ts) ? null : ts);
+                            }
+                        }
+                    } catch (e) { /* ignore */ }
+
+                    // Convert map to array and sort by timestamp (nulls last), then by display
+                    const arr = Array.from(map.entries()).map(([display, ts]) => ({ display, ts }));
+                    arr.sort((a,b) => {
+                        if (a.ts === null && b.ts === null) return a.display.localeCompare(b.display);
+                        if (a.ts === null) return 1;
+                        if (b.ts === null) return -1;
+                        return a.ts - b.ts;
+                    });
+                    return arr.map(x => x.display);
+                };
+
+                fields.forEach(f => {
+                    const btn = document.createElement('div');
+                    btn.style.cursor = 'pointer';
+                    btn.style.padding = '4px 6px';
+                    btn.innerText = f;
+                    btn.onclick = () => {
+                        // Si es campo fecha, mostrar lista de fechas únicas en lugar de prompt
+                        if (f === 'F. DESPACHO' || f === 'F.ING.COST') {
+                            const colName = (f === 'F. DESPACHO') ? 'F. DESPACHO' : 'F.ING.COST';
+                            const vals = getUniqueValues(colName, true);
+                            // construir sub-lista
+                            if (vals.length === 0) {
+                                alert('No hay valores de fecha disponibles en la columna.');
+                                hideMenu();
+                                return;
+                            }
+                            menu.innerHTML = '';
+                            const back = document.createElement('div');
+                            back.style.cursor = 'pointer';
+                            back.style.padding = '4px 6px';
+                            back.style.fontWeight = '600';
+                            back.innerText = '< Volver';
+                            back.onclick = () => { buildMenu(); };
+                            menu.appendChild(back);
+
+                            const list = document.createElement('div');
+                            list.style.maxHeight = '220px';
+                            list.style.overflow = 'auto';
+                            list.style.marginTop = '6px';
+                            vals.forEach(v => {
+                                const item = document.createElement('div');
+                                item.style.cursor = 'pointer';
+                                item.style.padding = '4px 6px';
+                                item.innerText = v;
+                                item.onclick = () => {
+                                    bloqueoHeaderFilter = { field: f, value: v };
+                                    renderBloqueo();
+                                    hideMenu();
+                                };
+                                list.appendChild(item);
+                            });
+                            menu.appendChild(list);
+                            return;
+                        }
+
+                        // campos no fecha: usar prompt simple
+                        const val = prompt(`Valor para filtrar ${f}:`, '');
+                        if (val !== null) {
+                            bloqueoHeaderFilter = { field: f, value: val };
+                            renderBloqueo();
+                        }
+                        hideMenu();
+                    };
+                    menu.appendChild(btn);
+                });
+
+                const clear = document.createElement('div');
+                clear.style.cursor = 'pointer';
+                clear.style.padding = '6px 4px';
+                clear.style.borderTop = '1px solid #eee';
+                clear.style.marginTop = '6px';
+                clear.innerText = 'Limpiar filtro';
+                clear.onclick = () => {
+                    bloqueoHeaderFilter = null;
+                    renderBloqueo();
+                    hideMenu();
+                };
+                menu.appendChild(clear);
+            };
+
+            const hideMenu = () => { menu.style.display = 'none'; };
+
+            buildMenu();
+
+            // Mostrar menú al hacer click derecho en la fila de encabezado
+            thead.addEventListener('contextmenu', function(e) {
+                // Solo en sub-tab 'Por Programar'
+                const btnX = document.getElementById('btn-xprog');
+                const isXProgActive = btnX && btnX.classList.contains('active');
+                if (!isXProgActive) return; // no mostrar menú si no está en Por Programar
+
+                e.preventDefault();
+                menu.style.left = (e.pageX + 2) + 'px';
+                menu.style.top = (e.pageY + 2) + 'px';
+                menu.style.display = 'block';
+            });
+
+            // Ocultar al click fuera
+            document.addEventListener('click', function(e) {
+                if (!menu) return;
+                if (e.target && menu.contains(e.target)) return;
+                hideMenu();
+            });
         }
 
         function renderLavado() {
@@ -2741,10 +2990,32 @@
             return (idx !== undefined && idx !== -1) ? row[idx] : "";
         }
 
-        function renderRutaBadge(rutaVal, row = null) {
+        function renderRutaBadge(rutaVal, row = null, rowIndex = null) {
             const rutaKey = String(rutaVal || "").toUpperCase().trim();
             let rutaDisplay = rutaVal;
-            
+
+            // Si la ruta contiene NORMAL y estamos en Corte X PROG, mostrar select con opciones
+            try {
+                const onCorteView = document.getElementById('view-corte') && document.getElementById('view-corte').classList.contains('active');
+                if (rutaKey.indexOf('NORMAL') !== -1 && onCorteView && currentCorteFilter === 'X PROG') {
+                    const current = String(rutaVal || '').toUpperCase().trim();
+                    const opts = ['LAVADA','ACABADA'];
+                    let optionsHtml = '';
+                    let matched = false;
+                    for (const o of opts) {
+                        const sel = (current === o) ? 'selected' : '';
+                        if (sel) matched = true;
+                        optionsHtml += `<option value="${o}" ${sel}>${o}</option>`;
+                    }
+                    if (current && !matched) {
+                        optionsHtml = `<option value="${current}" selected>${current}</option>` + optionsHtml;
+                    }
+                    const idx = (rowIndex !== null) ? rowIndex : '';
+                    rutaDisplay = `<select class="table-select" onchange="updateRow(${idx}, 'RUTA TELA', this.value, this)">${optionsHtml}</select>`;
+                    return rutaDisplay;
+                }
+            } catch(e) { /* ignore */ }
+
             if (rutaKey === 'ACABADA') {
                 rutaDisplay = `<span class="route-badge route-ac">AC</span>`;
             } else if (rutaKey === 'LAVADA') {
@@ -3004,7 +3275,7 @@
                     : '';
 
                 // Usar la función helper para renderizar el badge de RUTA
-                const rutaDisplay = renderRutaBadge(rutaVal, row);
+                const rutaDisplay = renderRutaBadge(rutaVal, row, rowIndex);
 
                 let html = `
                     <td class="date-cell">${fDespacho}</td>
@@ -3287,8 +3558,43 @@
                         }
                     }
 
-                    // VALIDACIÓN 2: Verificar BLOQUES? y COLL o TAP? al marcar OK en PROG
+                    // VALIDACIÓN 2: Al marcar STATUS_CORTE = 'OK' en sub-tabs PROG
+                    // - Primero: impedir si estado_bloqueo o estado_lavada no son 'OK'
                     if (isStatusCol && valNorm === 'OK' && onCorteView && isProgSubtab) {
+                        // Obtener valor de RUTA TELA para excepciones (p.ej. ACABADA)
+                        const idxRuta = findColIndexNormalized('RUTA TELA');
+                        const rutaRaw = (idxRuta !== -1 && rawData[rowIndex] && rawData[rowIndex][idxRuta]) ? String(rawData[rowIndex][idxRuta]).toUpperCase().trim() : '';
+
+                        // Si la ruta es ACABADA, no requerimos que esté OK en estado_lavada;
+                        // en ese caso sólo exigimos que BLOQUES y COLL/TAP estén completados
+                        let estBloqRaw = '';
+                        let estLavRaw = '';
+                        if (rutaRaw !== 'ACABADA') {
+                            const idxEstBloq = findColIndexNormalized('estado_bloqueo');
+                            const idxEstLav = findColIndexNormalized('estado_lavada');
+                            estBloqRaw = (idxEstBloq !== -1 && rawData[rowIndex] && rawData[rowIndex][idxEstBloq]) ? String(rawData[rowIndex][idxEstBloq]).toUpperCase().trim() : '';
+                            estLavRaw = (idxEstLav !== -1 && rawData[rowIndex] && rawData[rowIndex][idxEstLav]) ? String(rawData[rowIndex][idxEstLav]).toUpperCase().trim() : '';
+                        }
+
+                        const needBloquear = (rutaRaw === 'ACABADA') ? false : (estBloqRaw !== 'OK');
+                        const needLavar = (rutaRaw === 'ACABADA') ? false : (estLavRaw !== 'OK');
+
+                        if (needBloquear || needLavar) {
+                            // Mensaje específico según el caso
+                            let msg = '';
+                            if (needBloquear && needLavar) msg = 'Por bloquear y por lavar';
+                            else if (needBloquear) msg = 'Por bloquear';
+                            else msg = 'Por lavar';
+
+                            // Revertir selección visual al valor anterior
+                            const prev = (writeIdx !== undefined && writeIdx !== -1 && rawData[rowIndex] && rawData[rowIndex][writeIdx]) ? rawData[rowIndex][writeIdx] : '';
+                            try { if (selectElement) selectElement.value = prev; } catch (e) {}
+                            try { if (selectElement) { selectElement.style.border = '2px solid #ef4444'; setTimeout(()=>{ selectElement.style.border=''; }, 1600); } } catch(e){}
+                            alert(msg);
+                            return; // cancelar guardado
+                        }
+
+                        // Si pasa la validación anterior, continuar con la validación existente
                         // localizar índices normalizados para las dos columnas
                         const findBestIndexForRow = function(rIdx, names) {
                             // findColIndexNormalized está definido más arriba en este scope
@@ -3440,7 +3746,21 @@
             }
             
             if (colName === 'estado_corte_bloques') {
-                // Si cambiamos estado_corte_bloques, actualizar Corte Bloques
+                // Si cambiamos estado_corte_bloques: comportamiento línea-a-línea.
+                // 1) Reflejar inmediatamente el valor seleccionado en la celda (evita que quede invisible)
+                // 2) Actualizar contadores locales
+                // 3) Seguir guardando en el sheet (petición se envía más abajo como siempre)
+                try {
+                    if (selectElement) {
+                        const txt = (selectElement.options && selectElement.selectedIndex >= 0 && selectElement.options[selectElement.selectedIndex]) ? selectElement.options[selectElement.selectedIndex].text : String(value);
+                        const td = selectElement.closest && selectElement.closest('td');
+                        if (td) td.innerText = txt;
+                    }
+                } catch (e) { console.error('Error actualizando UI estado_corte_bloques:', e); }
+
+                try { updateCorteBloquesCounters(); } catch (e) {}
+
+                // Re-renderizar la vista en breve para mantener consistencia visual
                 setTimeout(() => {
                     renderCorteBloques();
                 }, 600);
@@ -4570,7 +4890,12 @@
                 
                 if (estadoBloquesNorm === 'OK CORTE') {
                     // Filtrar por estado_corte_bloques según el sub-tab activo
-                    const estadoCorteBloqsRaw = getVal(row, 'estado_corte_bloques') || getVal(row, 'ESTADO_CORTE_BLOQUES') || getVal(row, 'ESTADO CORTE BLOQUES') || '';
+                    let estadoCorteBloqsRaw = getVal(row, 'estado_corte_bloques') || getVal(row, 'ESTADO_CORTE_BLOQUES') || getVal(row, 'ESTADO CORTE BLOQUES') || '';
+                    // Fallback robusto: buscar índice de encabezado directamente si getVal no encontró nada
+                    if ((!estadoCorteBloqsRaw || estadoCorteBloqsRaw === '') && typeof findHeaderIndexCaseInsensitive === 'function') {
+                        const idx = findHeaderIndexCaseInsensitive('estado_corte_bloques');
+                        if (idx !== -1 && row[idx] !== undefined) estadoCorteBloqsRaw = row[idx];
+                    }
                     const estadoCorteBloqsNorm = (!estadoCorteBloqsRaw || estadoCorteBloqsRaw === '') ? 'X PROG' : String(estadoCorteBloqsRaw);
                     
                     if (estadoCorteBloqsNorm === currentCorteBloquesFilter) {
@@ -4651,7 +4976,12 @@
                     tdBloq.innerText = valBloq;
                     tr.appendChild(tdBloq);
 
-                    const val = getVal(row, 'estado_corte_bloques') || getVal(row, 'ESTADO_CORTE_BLOQUES') || getVal(row, 'ESTADO CORTE BLOQUES') || '';
+                    let val = getVal(row, 'estado_corte_bloques') || getVal(row, 'ESTADO_CORTE_BLOQUES') || getVal(row, 'ESTADO CORTE BLOQUES') || '';
+                    // Fallback robusto para leer directamente de rawData si colMap no contiene la columna
+                    if ((!val || val === '') && typeof findHeaderIndexCaseInsensitive === 'function') {
+                        const idxVal = findHeaderIndexCaseInsensitive('estado_corte_bloques');
+                        if (idxVal !== -1 && row[idxVal] !== undefined) val = row[idxVal];
+                    }
                     const valNorm = (!val || val === '') ? 'X PROG' : String(val);
                     let selectClass = '';
                     if (valNorm.toUpperCase().includes('PROG') && valNorm !== 'X PROG') selectClass = 'sel-PROG';
@@ -4687,12 +5017,24 @@
                 const row = rawData[i];
                 const estadoBloquesRaw = getVal(row, 'ESTADO BLOQUES') || getVal(row, 'ESTADO_BLOQUES') || getVal(row, 'estado_bloques') || '';
                 const estadoBloquesNorm = (estadoBloquesRaw || '').toString().toUpperCase().trim();
-                
+
                 if (estadoBloquesNorm === 'OK CORTE') {
-                    const estadoCorteBloqsRaw = getVal(row, 'estado_corte_bloques') || getVal(row, 'ESTADO_CORTE_BLOQUES') || getVal(row, 'ESTADO CORTE BLOQUES') || '';
-                    const estadoCorteBloqsNorm = (!estadoCorteBloqsRaw || estadoCorteBloqsRaw === '') ? 'X PROG' : String(estadoCorteBloqsRaw);
-                    const pdsVal = parseFloat(getVal(row, "PDS GIRADAS")) || 0;
-                    
+                    // Leer estado_corte_bloques robustamente
+                    let estadoCorteBloqsRaw = getVal(row, 'estado_corte_bloques') || getVal(row, 'ESTADO_CORTE_BLOQUES') || getVal(row, 'ESTADO CORTE BLOQUES') || '';
+                    if ((!estadoCorteBloqsRaw || estadoCorteBloqsRaw === '') && typeof findHeaderIndexCaseInsensitive === 'function') {
+                        const idx = findHeaderIndexCaseInsensitive('estado_corte_bloques');
+                        if (idx !== -1 && row[idx] !== undefined) estadoCorteBloqsRaw = row[idx];
+                    }
+                    const estadoCorteBloqsNorm = (!estadoCorteBloqsRaw || estadoCorteBloqsRaw === '') ? 'X PROG' : String(estadoCorteBloqsRaw).toUpperCase().trim();
+
+                    // Leer PDS con fallback a rawData si es necesario
+                    let pdsVal = parseFloat(getVal(row, 'PDS') || getVal(row, 'PDS GIRADAS') || 0) || 0;
+                    if ((pdsVal === 0 || isNaN(pdsVal)) && typeof findHeaderIndexCaseInsensitive === 'function') {
+                        let idxPds = findHeaderIndexCaseInsensitive('PDS GIRADAS');
+                        if (idxPds === -1) idxPds = findHeaderIndexCaseInsensitive('PDS');
+                        if (idxPds !== -1 && row[idxPds] !== undefined) pdsVal = parseFloat(row[idxPds]) || 0;
+                    }
+
                     if (estadoCorteBloqsNorm === 'X PROG') pds_xprog += pdsVal;
                     if (estadoCorteBloqsNorm === 'PROG') pds_prog += pdsVal;
                 }
@@ -5307,332 +5649,13 @@
 
     <script>
         (function(){
-            const sampleData = [
-                {label: 'Bloqueo', pds: 28426, cls: 'c-bloqueo'},
-                {label: 'Lavanderia', pds: 1200, cls: 'c-lavanderia'},
-                {label: 'Corte Pzas', pds: 8000, cls: 'c-corte-pzas'},
-                {label: 'Corte Bloques', pds: 5000, cls: 'c-corte-bloques'},
-                {label: 'Enumerado', pds: 3000, cls: 'c-enumerado'},
-                {label: 'Transfer', pds: 2000, cls: 'c-transfer'},
-                {label: 'Bordado', pds: 1500, cls: 'c-bordado'},
-                {label: 'Estampado', pds: 800, cls: 'c-estampado'},
-                {label: 'Habilitado', pds: 600, cls: 'c-habilitado'}
-            ];
-
-            window.openStockFunnelModal = function(data) {
-                const modal = document.getElementById('modal-stock-funnel');
-                modal.classList.add('active');
-                // Compute data (or use provided) and render. Also log diagnostic info
-                const computed = data || computeStockByStage();
-                try {
-                    console.log('DEBUG: computeStockByStage result:', computed);
-                    // También obtener badges de Bloqueo (Por Programar + Programado) para comparar
-                    function parseBadgePds(elId) {
-                        try {
-                            const el = document.getElementById(elId);
-                            if (!el) return 0;
-                            const txt = (el.innerText||el.textContent||'').toString();
-                            const m = txt.match(/([0-9,]+)\s*pds/);
-                            return m ? parseInt(m[1].replace(/,/g,''),10) : 0;
-                        } catch(e){ return 0; }
-                    }
-                    const px = parseBadgePds('kg-xprog');
-                    const pp = parseBadgePds('kg-prog');
-                    const sumBadges = px + pp;
-                    console.log('DEBUG: badge Por Programar:', px, 'Programado:', pp, 'suma:', sumBadges);
-                    const bloqueoModal = (computed.find(i=>i.label && i.label.toLowerCase().indexOf('bloqueo')!==-1) || {pds:0}).pds;
-                    console.log('DEBUG: bloqueoModal pds:', bloqueoModal);
-                } catch(e) { console.error('DEBUG funnel logging error', e); }
-                renderFunnelChart(computed);
-            };
-
-            function computeStockByStage(){
-                // devuelve array [{label, pds, cls}]
-                const stages = {
-                    'Bloqueo': 0,
-                    'Lavanderia': 0,
-                    'Corte Pzas': 0,
-                    'Corte Bloques': 0,
-                    'Enumerado': 0,
-                    'Transfer': 0,
-                    'Bordado': 0,
-                    'Estampado': 0,
-                    'Habilitado': 0
-                };
-                if (!window.rawData || !window.colMap) return sampleData;
-                for (let i = 1; i < rawData.length; i++) {
-                    const row = rawData[i];
-                    const pds = parseFloat(getVal(row, 'PDS') || getVal(row, 'PDS GIRADAS') || 0) || 0;
-                    if (!pds || pds <= 0) continue;
-
-                    const hab = String(getVal(row, 'estado_habilitado') || '').toUpperCase();
-                    const enu = String(getVal(row, 'estado_enumerado') || '').toUpperCase();
-                    const bord = String(getVal(row, 'estado_bordado') || '').toUpperCase();
-                    const estamp = String(getVal(row, 'estado_estampado') || '').toUpperCase();
-                    const transf = String(getVal(row, 'estado_transfer') || getVal(row,'estado_transferencia') || '').toUpperCase();
-                    const statusCorte = String(getVal(row, 'STATUS_CORTE') || getVal(row,'STATUS') || getVal(row,'status') || getVal(row,'estado_corte') || '').toUpperCase();
-                    const estadoBloques = String(getVal(row, 'estado_bloques') || getVal(row,'ESTADO_BLOQUES') || '').toUpperCase();
-                    const ruta = String(getVal(row, 'RUTA TELA') || '').toUpperCase();
-
-                    if (hab && hab.indexOf('OK') !== -1) { stages['Habilitado'] += pds; continue; }
-                    if (enu && enu.indexOf('OK') !== -1) { stages['Enumerado'] += pds; continue; }
-                    if (bord && bord !== '' && bord.indexOf('NO LLEVA') === -1 && bord.indexOf('OK') === -1) { stages['Bordado'] += pds; continue; }
-                    if (estamp && estamp !== '' && estamp.indexOf('NO LLEVA') === -1 && estamp.indexOf('OK') === -1) { stages['Estampado'] += pds; continue; }
-                    if (transf && transf !== '' && transf.indexOf('NO LLEVA') === -1 && transf.indexOf('OK') === -1) { stages['Transfer'] += pds; continue; }
-                    if (statusCorte && statusCorte.indexOf('OK') !== -1) {
-                        if (estadoBloques && estadoBloques !== '' && estadoBloques.indexOf('NO') === -1) stages['Corte Bloques'] += pds;
-                        else stages['Corte Pzas'] += pds;
-                        continue;
-                    }
-                    if (ruta === 'LAVADA' && String(getVal(row,'estado_bloqueo')||'').toUpperCase() === 'OK') { stages['Lavanderia'] += pds; continue; }
-
-                    // Por defecto se considera en Bloqueo
-                    stages['Bloqueo'] += pds;
-                }
-
-                // Ajustar totales para que correspondan a la suma explícita de subtabs
-                // (por ejemplo Bloqueo = Por Programar + Programado). Calculamos
-                // los subtotales usando las mismas reglas que los badges y luego
-                // sobrescribimos los valores en 'stages' para mayor precisión.
-                try {
-                    let b_pdsX = 0, b_pdsP = 0;
-                    let l_pdsEnLav = 0;
-                    let transfer_total = 0;
-                    let bord_total = 0;
-                    let estamp_total = 0;
-
-                    for (let i = 1; i < rawData.length; i++) {
-                        const row = rawData[i];
-                        const pds = parseFloat(getVal(row, 'PDS') || getVal(row, 'PDS GIRADAS') || 0) || 0;
-                        if (!pds || pds <= 0) continue;
-
-                        const rutaVal = String(getVal(row, 'RUTA TELA') || getVal(row,'RUTA') || '').toUpperCase();
-                        const estadoBloq = String(getVal(row, 'estado_bloqueo') || '').toUpperCase() || 'X PROG';
-                        const estadoLav = String(getVal(row, 'estado_lavada') || '').toUpperCase() || 'EN LAV';
-
-                        // Bloqueo subtabs: se cuentan sólo para filas cuya ruta sea LAVADA
-                        if (rutaVal === 'LAVADA') {
-                            if (estadoBloq === 'X PROG' || estadoBloq === '') b_pdsX += pds;
-                            else if (estadoBloq.indexOf('PROG') !== -1) b_pdsP += pds;
-                            else if (estadoBloq === 'OK') {
-                                // Si está OK pero en ruta LAVADA, no contarlo como bloqueo
-                            }
-                        }
-
-                        // Lavandería: filas con estado_bloqueo = OK y estado_lavada = EN LAV
-                        if ((String(getVal(row, 'estado_bloqueo') || '').toUpperCase() === 'OK') && (estadoLav === 'EN LAV')) {
-                            l_pdsEnLav += pds;
-                        }
-
-                        // Transfer: considerar filas enumeradas OK y que no sean NO LLEVA
-                        try {
-                            const ev = String(getVal(row, 'estado_enumerado') || '').toUpperCase();
-                            if (ev.indexOf('OK') !== -1) {
-                                let rawNTrans = getVal(row, 'n.transfxpda');
-                                if (!rawNTrans || rawNTrans === undefined || rawNTrans === null || String(rawNTrans).trim() === '') {
-                                    const clienteChk = (getVal(row, 'CLIENTE') || '').toString().trim();
-                                    const estiloChk = (getVal(row, 'ESTILO') || '').toString().trim();
-                                    const avgChk = avgTransfByClienteEstilo(clienteChk, estiloChk);
-                                    rawNTrans = (avgChk !== null) ? avgChk : '';
-                                }
-                                const nTransNorm = (rawNTrans || '').toString().toUpperCase().trim();
-                                if (nTransNorm.indexOf('NO LLEVA') === -1) transfer_total += pds;
-                            }
-                        } catch (e) {}
-
-                        // Bordado / Estampado: sumar pds según criterios usados en badges
-                        try {
-                            const ev = String(getVal(row, 'estado_enumerado') || '').toUpperCase();
-                            if (ev.indexOf('OK') !== -1) {
-                                const rawNbd = (getVal(row, 'n.BDxpda') || getVal(row, 'N.BDXPDA') || '').toString().toUpperCase();
-                                if (rawNbd.indexOf('NO LLEVA') === -1) {
-                                    const estadoB = (getVal(row, 'estado_bordado') || '').toString().toUpperCase() || 'X PROG';
-                                    if (!(estadoB.indexOf('OK') !== -1)) bord_total += pds;
-                                }
-
-                                const rawNest = (getVal(row, 'n.ESTAMPxpda') || getVal(row, 'N.ESTAMPXPDA') || '').toString().toUpperCase();
-                                if (rawNest.indexOf('NO LLEVA') === -1) {
-                                    const estadoE = (getVal(row, 'estado_estampado') || '').toString().toUpperCase() || 'X PROG';
-                                    if (!(estadoE.indexOf('OK') !== -1)) estamp_total += pds;
-                                }
-                            }
-                        } catch (e) {}
-                    }
-
-                    // Sobrescribir los valores calculados inicialmente para reflejar la suma de subtabs
-                    // Preferir los valores que ya están mostrados en los badges (si existen en el DOM),
-                    // ya que esos badges son la fuente visible de subtotales.
-                    function _parseBadge(id){
-                        try {
-                            const el = document.getElementById(id);
-                            if (!el) return null;
-                            const txt = (el.innerText || el.textContent || '').toString();
-                            const m = txt.match(/([0-9,]+)\s*pds/);
-                            return m ? parseInt(m[1].replace(/,/g, ''), 10) : null;
-                        } catch(e) { return null; }
-                    }
-                    const pxBadge = _parseBadge('kg-xprog');
-                    const ppBadge = _parseBadge('kg-prog');
-                    if ((pxBadge !== null && pxBadge > 0) || (ppBadge !== null && ppBadge > 0)) {
-                        stages['Bloqueo'] = Math.round((pxBadge || 0) + (ppBadge || 0));
-                    } else {
-                        stages['Bloqueo'] = Math.round((b_pdsX || 0) + (b_pdsP || 0));
-                    }
-                    stages['Lavanderia'] = Math.round(l_pdsEnLav || stages['Lavanderia']);
-                    stages['Transfer'] = Math.round(transfer_total || stages['Transfer']);
-                    stages['Bordado'] = Math.round(bord_total || stages['Bordado']);
-                    stages['Estampado'] = Math.round(estamp_total || stages['Estampado']);
-                } catch (e) {
-                    // Si hay error en la recomputación, dejar valores originales
-                    console.error('Error recomputing subtotals for funnel modal', e);
-                }
-
-                // convertir a array con classes
-                const mapCls = {
-                    'Bloqueo': 'c-bloqueo', 'Lavanderia': 'c-lavanderia', 'Corte Pzas': 'c-corte-pzas',
-                    'Corte Bloques': 'c-corte-bloques', 'Enumerado': 'c-enumerado', 'Transfer': 'c-transfer',
-                    'Bordado': 'c-bordado', 'Estampado': 'c-estampado', 'Habilitado': 'c-habilitado'
-                };
-                // Preferir valores visibles en los badges cuando existan, según las reglas solicitadas
-                function _parseBadge(id){
-                    try {
-                        const el = document.getElementById(id);
-                        if (!el) return null;
-                        const txt = (el.innerText || el.textContent || '').toString();
-                        const m = txt.match(/([0-9,]+)\s*pds/);
-                        return m ? parseInt(m[1].replace(/,/g,''), 10) : null;
-                    } catch(e){ return null; }
-                }
-
-                // 1) Bloqueo -> suma de Por Programar + Programado (badges kg-xprog + kg-prog)
-                try {
-                    const bx = _parseBadge('kg-xprog');
-                    const bp = _parseBadge('kg-prog');
-                    if (bx !== null || bp !== null) stages['Bloqueo'] = (bx||0) + (bp||0);
-                } catch(e){}
-
-                // 2) Lavanderia -> badge `kg-enlav` (Por Lavar)
-                try { const lav = _parseBadge('kg-enlav'); if (lav !== null) stages['Lavanderia'] = lav; } catch(e){}
-
-                // 3) Corte Pzas -> suma de corte-pds-xprog + corte-pds-1t + corte-pds-2t + corte-pds-3t
-                try {
-                    const cx = _parseBadge('corte-pds-xprog') || 0;
-                    const c1 = _parseBadge('corte-pds-1t') || 0;
-                    const c2 = _parseBadge('corte-pds-2t') || 0;
-                    const c3 = _parseBadge('corte-pds-3t') || 0;
-                    const cortePzasSum = cx + c1 + c2 + c3;
-                    if (cortePzasSum > 0) stages['Corte Pzas'] = cortePzasSum;
-                } catch(e){}
-
-                // 4) Corte Bloques -> usar suma de Por Programar + Programado asociada a bloques (aprox: corte-pds-xprog + corte-pds-1t)
-                try {
-                    const cbx = _parseBadge('corte-pds-xprog') || 0;
-                    const cbp = _parseBadge('corte-pds-1t') || 0;
-                    const corteBloquesSum = cbx + cbp;
-                    if (corteBloquesSum > 0) stages['Corte Bloques'] = corteBloquesSum;
-                } catch(e){}
-
-                // 5) Enumerado -> badge `enumerado-pds-por`
-                try { const enu = _parseBadge('enumerado-pds-por'); if (enu !== null) stages['Enumerado'] = enu; } catch(e){}
-
-                // 6) Transfer -> suma badges transfer-pds-xprog + transfer-pds-prog
-                try {
-                    const tx = _parseBadge('transfer-pds-xprog') || 0;
-                    const tp = _parseBadge('transfer-pds-prog') || 0;
-                    if ((tx+tp) > 0) stages['Transfer'] = tx+tp;
-                } catch(e){}
-
-                // 7) Bordado -> badge `artes-pds-bordado`
-                try { const bd = _parseBadge('artes-pds-bordado'); if (bd !== null) stages['Bordado'] = bd; } catch(e){}
-
-                // 8) Estampado -> badge `artes-pds-estampado`
-                try { const es = _parseBadge('artes-pds-estampado'); if (es !== null) stages['Estampado'] = es; } catch(e){}
-
-                // 9) Habilitado -> mantener suma de la columna PDS calculada anteriormente
-
-                const result = Object.keys(stages).map(k => ({ label: k, pds: Math.round(stages[k]||0), cls: mapCls[k] }));
-                return result;
-            }
-
-            // Exponer función de cálculo y un helper de debug para la consola
-            try {
-                window.computeStockByStage = computeStockByStage;
-                window.debugStockTotals = function() {
-                    try {
-                        const computed = computeStockByStage();
-                        console.log('DEBUG_FUNC: computeStockByStage ->', computed);
-                        function parseBadge(elId){
-                            const el = document.getElementById(elId);
-                            if (!el) return 0;
-                            const txt = (el.innerText||el.textContent||'').toString();
-                            const m = txt.match(/([0-9,]+)\s*pds/);
-                            return m ? parseInt(m[1].replace(/,/g,''),10) : 0;
-                        }
-                        const px = parseBadge('kg-xprog');
-                        const pp = parseBadge('kg-prog');
-                        const sumBadges = px + pp;
-                        console.log('DEBUG_FUNC: badge Por Programar (kg-xprog)=', px, 'Programado (kg-prog)=', pp, 'suma=', sumBadges);
-                        const bloqueoModal = (computed.find(i=>i.label && i.label.toLowerCase().indexOf('bloqueo')!==-1) || {pds:0}).pds;
-                        console.log('DEBUG_FUNC: bloqueoModal pds=', bloqueoModal);
-                        return { computed, badges: { px, pp, sumBadges }, bloqueoModal };
-                    } catch(e){ console.error('debugStockTotals error', e); throw e; }
-                };
-            } catch(e) { console.error('Error exposing debug functions', e); }
-
+            // Stock funnel: código de visualización removido.
+            // Se mantiene una función de cierre mínima para compatibilidad con el modal HTML.
             window.closeStockFunnelModal = function() {
                 const modal = document.getElementById('modal-stock-funnel');
+                if (!modal) return;
                 modal.classList.remove('active');
             };
-
-            function renderFunnelChart(data){
-                const container = document.getElementById('funnel-chart');
-                if(!container) return;
-                // Mostrar en el orden específico solicitado (no por tamaño)
-                const source = (data || sampleData).slice();
-                const byLabel = {};
-                source.forEach(s => { byLabel[String(s.label).trim()] = s; });
-                const order = ['Bloqueo','Lavanderia','Corte Pzas','Corte Bloques','Enumerado','Transfer','Bordado','Estampado','Habilitado'];
-                const items = order.map(name => byLabel[name] ? byLabel[name] : ({ label: name, pds: 0, cls: '' }));
-                const max = Math.max(...items.map(i=>i.pds), 1);
-                container.innerHTML = '';
-                items.forEach(item => {
-                    const pct = Math.max(3, (item.pds / max) * 100);
-
-                    const row = document.createElement('div');
-                    row.className = 'funnel-block';
-
-                    const label = document.createElement('div');
-                    label.className = 'funnel-label';
-                    label.textContent = item.label;
-
-                    const barWrap = document.createElement('div');
-                    barWrap.className = 'funnel-bar';
-
-                    const fill = document.createElement('div');
-                    fill.className = 'bar-fill ' + (item.cls || 'c-corte-pzas');
-                    fill.style.width = pct + '%';
-                    // Do not place the numeric inside the fill; it's shown to the right
-                    barWrap.appendChild(fill);
-
-                    const valueEl = document.createElement('div');
-                    valueEl.className = 'funnel-value';
-                    valueEl.textContent = numberWithCommas(item.pds) + ' pds';
-
-                    row.appendChild(label);
-                    row.appendChild(barWrap);
-                    row.appendChild(valueEl);
-
-                    container.appendChild(row);
-                });
-            }
-
-            function numberWithCommas(x){ return String(x).replace(/\B(?=(\d{3})+(?!\d))/g, ","); }
-            function escapeHtml(s){ return String(s).replace(/[&<>\"]/g, function(t){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[t]; }); }
-
-            document.addEventListener('keydown', function(e){ if(e.key === 'Escape') closeStockFunnelModal(); });
-
-            // Expose render function for later updates
-            window.renderStockFunnel = renderFunnelChart;
         })();
     </script>
 
